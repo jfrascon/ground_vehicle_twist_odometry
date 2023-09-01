@@ -26,13 +26,16 @@ namespace eut_ground_vehicle_twist_odometry
                                           geometry_msgs::msg::Twist>;
 
     public:
-    GroundVehicleTwistOdometry():
-      rclcpp::Node{"gvt_odometry"},
+    GroundVehicleTwistOdometry(const std::string& node_name,
+                               const rclcpp::NodeOptions& options = rclcpp::NodeOptions()):
+      rclcpp::Node{node_name, options},
       twist_sub_{this->create_subscription<twist_type>(
-        "twist",
+        this->declare_parameter("twist_topic", "twist"),
         10,
         std::bind(&GroundVehicleTwistOdometry::twist_cb, this, std::placeholders::_1))},
-      odom_pub_{this->create_publisher<nav_msgs::msg::Odometry>("odometry", 10)},
+      odom_pub_{this->create_publisher<nav_msgs::msg::Odometry>(
+        this->declare_parameter("odometry_topic", "odom"),
+        10)},
       tf_pub_{*this},
       odometry_frame{this->declare_parameter("odometry_frame", "odom")},
       robot_base_frame{this->declare_parameter("robot_base_frame", "base_link")},
