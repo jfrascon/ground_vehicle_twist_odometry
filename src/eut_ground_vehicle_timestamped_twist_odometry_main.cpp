@@ -7,20 +7,22 @@ namespace eut_gvto = eut_ground_vehicle_twist_odometry;
 
 int main(int argc, char** argv)
 {
-  constexpr bool twist_is_timestamped{true};
+  constexpr bool timestamped_twist{true};
 
   rclcpp::init(argc, argv);
 
-  std::shared_ptr<eut_gvto::GroundVehicleTwistOdometry<twist_is_timestamped>> gvto;
+  std::shared_ptr<eut_gvto::GroundVehicleTwistOdometry<timestamped_twist>> gv_twist_odometry;
 
   try
   {
-    gvto = std::make_shared<eut_gvto::GroundVehicleTwistOdometry<twist_is_timestamped>>();
-    rclcpp::spin(gvto);
+    gv_twist_odometry = std::make_shared<eut_gvto::GroundVehicleTwistOdometry<timestamped_twist>>(
+      "ground_vehicle_twist_odometry");
+
+    rclcpp::spin(gv_twist_odometry);
   }
   catch(std::exception& ex)
   {
-    RCLCPP_FATAL(gvto->get_logger(), "%s.", ex.what());
+    RCLCPP_FATAL(gv_twist_odometry->get_logger(), "%s.", ex.what());
   }
 
   rclcpp::shutdown();
