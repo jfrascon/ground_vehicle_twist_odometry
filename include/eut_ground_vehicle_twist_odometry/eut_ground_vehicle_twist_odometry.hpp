@@ -111,6 +111,9 @@ namespace eut_ground_vehicle_twist_odometry
       position_.y += delta_y;
       yaw_ += delta_th;
 
+      double lin_cov = 1e-6;
+      double ang_cov = 1e-4;
+
       tf2::Quaternion q;
       q.setRPY(0.0, 0.0, yaw_);
       q.normalize();
@@ -125,6 +128,30 @@ namespace eut_ground_vehicle_twist_odometry
       odom.pose.pose.orientation.z = q.z();
       odom.pose.pose.orientation.w = q.w();
       odom.twist.twist             = *twist;
+
+      for (size_t i = 0; i < 36; ++i) {
+        odom.pose.covariance[i] = 0.0;
+      }
+
+      odom.pose.covariance[0] = lin_cov;
+      odom.pose.covariance[7] = lin_cov;
+      odom.pose.covariance[14] = lin_cov;
+      odom.pose.covariance[21] = ang_cov;
+      odom.pose.covariance[28] = ang_cov;
+      odom.pose.covariance[35] = ang_cov;
+
+      for (size_t i = 0; i < 36; ++i) {
+        odom.twist.covariance[i] = 0.0;
+      }
+
+      odom.twist.covariance[0] = lin_cov/2;
+      odom.twist.covariance[7] = lin_cov/2;
+      odom.twist.covariance[14] = lin_cov/2;
+      odom.twist.covariance[21] = ang_cov/2;
+      odom.twist.covariance[28] = ang_cov/2;
+      odom.twist.covariance[35] = ang_cov/2;
+
+
       odom_pub_->publish(odom);
 
       if(publish_tf_)
