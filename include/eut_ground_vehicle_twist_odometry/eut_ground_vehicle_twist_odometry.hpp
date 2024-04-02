@@ -141,12 +141,12 @@ namespace eut_ground_vehicle_twist_odometry
 
       std::fill(std::begin(odom.twist.covariance), std::end(odom.twist.covariance), 0.0);
 
-      odom.twist.covariance[0] = lin_cov/2;
-      odom.twist.covariance[7] = lin_cov/2;
-      odom.twist.covariance[14] = lin_cov/2;
-      odom.twist.covariance[21] = ang_cov/2;
-      odom.twist.covariance[28] = ang_cov/2;
-      odom.twist.covariance[35] = ang_cov/2;
+      odom.twist.covariance[0]  = lin_cov / 2.0;
+      odom.twist.covariance[7]  = lin_cov / 2.0;
+      odom.twist.covariance[14] = lin_cov / 2.0;
+      odom.twist.covariance[21] = ang_cov / 2.0;
+      odom.twist.covariance[28] = ang_cov / 2.0;
+      odom.twist.covariance[35] = ang_cov / 2.0;
 
 
       odom_pub_->publish(odom);
