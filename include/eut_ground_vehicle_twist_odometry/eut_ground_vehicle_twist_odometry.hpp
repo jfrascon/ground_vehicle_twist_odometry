@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <chrono>
 #include <cmath>
 #include <stdexcept>
@@ -129,9 +130,7 @@ namespace eut_ground_vehicle_twist_odometry
       odom.pose.pose.orientation.w = q.w();
       odom.twist.twist             = *twist;
 
-      for (size_t i = 0; i < 36; ++i) {
-        odom.pose.covariance[i] = 0.0;
-      }
+      std::fill(std::begin(odom.pose.covariance), std::end(odom.pose.covariance), 0.0);
 
       odom.pose.covariance[0] = lin_cov;
       odom.pose.covariance[7] = lin_cov;
@@ -140,9 +139,7 @@ namespace eut_ground_vehicle_twist_odometry
       odom.pose.covariance[28] = ang_cov;
       odom.pose.covariance[35] = ang_cov;
 
-      for (size_t i = 0; i < 36; ++i) {
-        odom.twist.covariance[i] = 0.0;
-      }
+      std::fill(std::begin(odom.twist.covariance), std::end(odom.twist.covariance), 0.0);
 
       odom.twist.covariance[0] = lin_cov/2;
       odom.twist.covariance[7] = lin_cov/2;
