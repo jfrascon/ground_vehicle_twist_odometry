@@ -112,9 +112,6 @@ namespace eut_ground_vehicle_twist_odometry
       position_.y += delta_y;
       yaw_ += delta_th;
 
-      double lin_cov = 1e-6;
-      double ang_cov = 1e-4;
-
       tf2::Quaternion q;
       q.setRPY(0.0, 0.0, yaw_);
       q.normalize();
@@ -132,21 +129,21 @@ namespace eut_ground_vehicle_twist_odometry
 
       std::fill(std::begin(odom.pose.covariance), std::end(odom.pose.covariance), 0.0);
 
-      odom.pose.covariance[0] = lin_cov;
-      odom.pose.covariance[7] = lin_cov;
-      odom.pose.covariance[14] = lin_cov;
-      odom.pose.covariance[21] = ang_cov;
-      odom.pose.covariance[28] = ang_cov;
-      odom.pose.covariance[35] = ang_cov;
+      odom.pose.covariance[0]  = LIN_COV;
+      odom.pose.covariance[7]  = LIN_COV;
+      odom.pose.covariance[14] = LIN_COV;
+      odom.pose.covariance[21] = ANG_COV;
+      odom.pose.covariance[28] = ANG_COV;
+      odom.pose.covariance[35] = ANG_COV;
 
       std::fill(std::begin(odom.twist.covariance), std::end(odom.twist.covariance), 0.0);
 
-      odom.twist.covariance[0]  = lin_cov / 2.0;
-      odom.twist.covariance[7]  = lin_cov / 2.0;
-      odom.twist.covariance[14] = lin_cov / 2.0;
-      odom.twist.covariance[21] = ang_cov / 2.0;
-      odom.twist.covariance[28] = ang_cov / 2.0;
-      odom.twist.covariance[35] = ang_cov / 2.0;
+      odom.twist.covariance[0]  = LIN_COV / 2.0;
+      odom.twist.covariance[7]  = LIN_COV / 2.0;
+      odom.twist.covariance[14] = LIN_COV / 2.0;
+      odom.twist.covariance[21] = ANG_COV / 2.0;
+      odom.twist.covariance[28] = ANG_COV / 2.0;
+      odom.twist.covariance[35] = ANG_COV / 2.0;
 
 
       odom_pub_->publish(odom);
@@ -178,5 +175,8 @@ namespace eut_ground_vehicle_twist_odometry
     geometry_msgs::msg::Point position_;
     double yaw_;
     bool publish_tf_;
+
+    static constexpr double LIN_COV{1e-6};
+    static constexpr double ANG_COV{1e-4};
   };
 }  // namespace eut_ground_vehicle_twist_odometry
