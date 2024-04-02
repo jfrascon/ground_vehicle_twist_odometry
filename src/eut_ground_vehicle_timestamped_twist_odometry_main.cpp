@@ -1,5 +1,7 @@
 #include <memory>
-#include <stdexcept>
+#include <exception>
+
+#include <rclcpp/rclcpp.hpp>
 
 #include "eut_ground_vehicle_twist_odometry/eut_ground_vehicle_twist_odometry.hpp"
 
