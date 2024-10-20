@@ -1,0 +1,27 @@
+ground_vehicle_twist_odometry:
+  ros__parameters:
+    # Arguments
+    odometry_frame: odom
+    robot_base_frame: base_footprint
+    publish_tf: true
+    first_twist_timeout: 120.0
+    # Remappings
+    ros_remappings:
+      topics:
+        # subscribers
+        - "twist:twist"
+        # publishers
+        - "odom:wheel_odom"
+        - "/tf:tf"
+      #services:
+        # services servers: none
+        # services clients: none
+      #actions:
+        # action servers: none
+        # action clients: none
+    ros_execution:
+      node_executable: "ground_vehicle_twist_odometry_node"
+      output: screen
+      emulate_tty: False
+      respawn: False
+      respawn_delay: 0

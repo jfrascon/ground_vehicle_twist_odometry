@@ -3,9 +3,9 @@
 
 #include <rclcpp/rclcpp.hpp>
 
-#include "eut_ground_vehicle_twist_odometry/eut_ground_vehicle_twist_odometry.hpp"
+#include "eut_ground_vehicle_twist_odometry/ground_vehicle_twist_odometry.hpp"
 
-namespace eut_gvto = eut_ground_vehicle_twist_odometry;
+namespace gvto = ground_vehicle_twist_odometry;
 
 int main(int argc, char** argv)
 {
@@ -13,11 +13,11 @@ int main(int argc, char** argv)
 
   rclcpp::init(argc, argv);
 
-  std::shared_ptr<eut_gvto::GroundVehicleTwistOdometry<timestamped_twist>> gv_twist_odometry;
+  std::shared_ptr<gvto::GroundVehicleTwistOdometry<timestamped_twist>> gv_twist_odometry;
 
   try
   {
-    gv_twist_odometry = std::make_shared<eut_gvto::GroundVehicleTwistOdometry<timestamped_twist>>(
+    gv_twist_odometry = std::make_shared<gvto::GroundVehicleTwistOdometry<timestamped_twist>>(
       "ground_vehicle_twist_odometry");
 
     rclcpp::spin(gv_twist_odometry);

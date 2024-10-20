@@ -17,7 +17,7 @@
 #include <tf2/LinearMath/Quaternion.h>
 #include <tf2_ros/transform_broadcaster.h>
 
-namespace eut_ground_vehicle_twist_odometry
+namespace ground_vehicle_twist_odometry
 {
   template<bool twist_is_timestamped>
   class GroundVehicleTwistOdometry: public rclcpp::Node
@@ -31,12 +31,10 @@ namespace eut_ground_vehicle_twist_odometry
                                const rclcpp::NodeOptions& options = rclcpp::NodeOptions()):
       rclcpp::Node{node_name, options},
       twist_sub_{this->create_subscription<twist_type>(
-        this->declare_parameter("twist_topic", "twist"),
+        "twist",
         10,
         std::bind(&GroundVehicleTwistOdometry::twist_cb, this, std::placeholders::_1))},
-      odom_pub_{this->create_publisher<nav_msgs::msg::Odometry>(
-        this->declare_parameter("odometry_topic", "odom"),
-        10)},
+      odom_pub_{this->create_publisher<nav_msgs::msg::Odometry>("odom", 10)},
       tf_pub_{*this},
       odometry_frame{this->declare_parameter("odometry_frame", "odom")},
       robot_base_frame{this->declare_parameter("robot_base_frame", "base_link")},
@@ -49,13 +47,13 @@ namespace eut_ground_vehicle_twist_odometry
 
       auto twist_msg = std::make_shared<twist_type>();
 
-      if(!rclcpp::wait_for_message(*twist_msg,
-                                   twist_sub_,
-                                   this->get_node_options().context(),
-                                   std::chrono::milliseconds{timeout_ms}))
-      {
-        throw std::runtime_error{"No first twist message received"};
-      }
+      // if(!rclcpp::wait_for_message(*twist_msg,
+      //                              twist_sub_,
+      //                              this->get_node_options().context(),
+      //                              std::chrono::milliseconds{timeout_ms}))
+      // {
+      //   throw std::runtime_error{"No first twist message received"};
+      // }
 
       if constexpr(twist_is_timestamped)
       {
@@ -144,7 +142,6 @@ namespace eut_ground_vehicle_twist_odometry
       odom.twist.covariance[21] = ANG_COV / 2.0;
       odom.twist.covariance[28] = ANG_COV / 2.0;
       odom.twist.covariance[35] = ANG_COV / 2.0;
-
 
       odom_pub_->publish(odom);
 

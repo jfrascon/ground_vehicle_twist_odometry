@@ -24,13 +24,13 @@ find_package(tf2 REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
 find_package(tf2_ros REQUIRED)
 
-add_executable(ground_vehicle_twist_odometry_node src/eut_ground_vehicle_twist_odometry_main.cpp)
+add_executable(ground_vehicle_twist_odometry_node src/ground_vehicle_twist_odometry_main.cpp)
 # target_compile_definitions(ground_vehicle_twist_odometry_node PRIVATE <ANY_DEFINITION>)
 target_include_directories(ground_vehicle_twist_odometry_node PRIVATE include)
 target_compile_options(ground_vehicle_twist_odometry_node PRIVATE -Wall -Wconversion -Wextra -Wpedantic) # -Werror
 ament_target_dependencies(ground_vehicle_twist_odometry_node rclcpp geometry_msgs nav_msgs tf2 tf2_geometry_msgs tf2_ros)
 
-add_executable(ground_vehicle_timestamped_twist_odometry_node src/eut_ground_vehicle_timestamped_twist_odometry_main.cpp)
+add_executable(ground_vehicle_timestamped_twist_odometry_node src/ground_vehicle_timestamped_twist_odometry_main.cpp)
 # target_compile_definitions(ground_vehicle_timestamped_twist_odometry_node PRIVATE <ANY_DEFINITION>)
 target_include_directories(ground_vehicle_timestamped_twist_odometry_node PRIVATE include)
 target_compile_options(ground_vehicle_timestamped_twist_odometry_node PRIVATE -Wall -Wconversion -Wextra -Wpedantic) # -Werror
@@ -41,7 +41,7 @@ install(TARGETS
   ground_vehicle_timestamped_twist_odometry_node
   DESTINATION lib/${PROJECT_NAME})
 
-install(DIRECTORY config launch DESTINATION share/${PROJECT_NAME}/)
+install(DIRECTORY launch test DESTINATION share/${PROJECT_NAME}/)
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)

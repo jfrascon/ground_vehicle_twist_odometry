@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+
+<launch>
+
+  <include file="$(find-pkg-share eut_ground_vehicle_twist_odometry)/launch/node_launcher.launch.py">
+    <arg name="config_file"
+         value="$(find-pkg-share eut_ground_vehicle_twist_odometry)/test/config/example_ground_vehicle_twist_odometry.yaml"/>
+  </include>
+
+</launch>
