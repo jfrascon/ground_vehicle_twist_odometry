@@ -88,7 +88,7 @@ namespace ground_vehicle_twist_odometry
       // /opt/ros/${ROS_DISTRO}/include/rclcpp/time.hpp:
       // * \warning Depending on sizeof(double) there could be significant precision loss.
       // * When an exact time is required use nanoseconds() instead.
-      double dt = static_cast<double>((t_current - t_prev_).nanoseconds()) / 1E9;  // dt in seconds.
+      auto dt = static_cast<double>((t_current - t_prev_).nanoseconds()) / 1E9;  // dt in seconds.
 
       // Check if we have received an old message that was dangling out there and is older than
       // the previous twist message that we received at time t_prev_ (t < t_prev_).
@@ -102,8 +102,12 @@ namespace ground_vehicle_twist_odometry
         return;
       }
 
-      auto delta_x  = (twist->linear.x * std::cos(yaw_) - twist->linear.y * std::sin(yaw_)) * dt;
-      auto delta_y  = (twist->linear.x * std::sin(yaw_) + twist->linear.y * std::cos(yaw_)) * dt;
+      // Compute once, then reuse.
+      auto cos_yaw = std::cos(yaw_);
+      auto sin_yaw = std::sin(yaw_);
+
+      auto delta_x  = (twist->linear.x * cos_yaw - twist->linear.y * sin_yaw) * dt;
+      auto delta_y  = (twist->linear.x * sin_yaw + twist->linear.y * cos_yaw) * dt;
       auto delta_th = twist->angular.z * dt;
 
       position_.x += delta_x;
@@ -176,4 +180,4 @@ namespace ground_vehicle_twist_odometry
     static constexpr double LIN_COV{1e-6};
     static constexpr double ANG_COV{1e-4};
   };
-}  // namespace eut_ground_vehicle_twist_odometry
+}  // namespace ground_vehicle_twist_odometry
