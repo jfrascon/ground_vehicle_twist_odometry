@@ -1,13 +1,14 @@
 import json
-import re
 import os
-import yaml
+import re
 
+import yaml
 from ament_index_python.packages import get_package_share_directory
+from launch_ros.actions import Node
+
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, OpaqueFunction
 from launch.substitutions import LaunchConfiguration
-from launch_ros.actions import Node
 
 
 def load_json_config(json_file):
@@ -18,9 +19,9 @@ def load_json_config(json_file):
     except FileNotFoundError:
         print(f"Error: The file '{json_file}' was not found.")
     except json.JSONDecodeError as e:
-        print(f"Error: An error occurred while parsing the JSON file: {e}")
+        print(f'Error: An error occurred while parsing the JSON file: {e}')
     except Exception as e:
-        print(f"An unexpected error occurred: {e}")
+        print(f'An unexpected error occurred: {e}')
 
 
 def load_yaml_config(yaml_file):
@@ -31,13 +32,12 @@ def load_yaml_config(yaml_file):
     except FileNotFoundError:
         print(f"Error: The file '{yaml_file}' was not found.")
     except yaml.YAMLError as e:
-        print(f"Error: An error occurred while parsing the YAML file: {e}")
+        print(f'Error: An error occurred while parsing the YAML file: {e}')
     except Exception as e:
-        print(f"An unexpected error occurred: {e}")
+        print(f'An unexpected error occurred: {e}')
 
 
-def get_node_config_and_ns(yaml_config, namespace=""):
-
+def get_node_config_and_ns(yaml_config, namespace=''):
     # Example:
     # namespace_1:
     #   namespace_2:
@@ -60,13 +60,13 @@ def get_node_config_and_ns(yaml_config, namespace=""):
 
     inner_yaml_config = yaml_config[keys[0]]
 
-    if "ros__parameters" in inner_yaml_config:
+    if 'ros__parameters' in inner_yaml_config:
         return (yaml_config, namespace)
     else:
-        if namespace == "":
+        if namespace == '':
             namespace = keys[0]
         else:
-            namespace = namespace + "/" + keys[0]
+            namespace = namespace + '/' + keys[0]
         return get_node_config_and_ns(inner_yaml_config, namespace)
 
 
@@ -96,7 +96,7 @@ def get_remappings_for_actions(actions_yaml):
     # Reference: https://github.com/ros2/ros2/issues/1312#issuecomment-1705521109
     # itm is a dictionary, each {from: "from_i", to: "to_i"}
     for item in actions_yaml:
-        from_to_list = item.split(":")
+        from_to_list = item.split(':')
         remapping_list.append((from_to_list[0] + '/_action/feedback', from_to_list[1] + '/_action/feedback'))
         remapping_list.append((from_to_list[0] + '/_action/status', from_to_list[1] + '/_action/status'))
         remapping_list.append((from_to_list[0] + '/_action/cancel_goal', from_to_list[1] + '/_action/cancel_goal'))
@@ -107,7 +107,6 @@ def get_remappings_for_actions(actions_yaml):
 
 
 def get_remappings(ros_remappings):
-
     # This is what we get from yaml configuration file:
     # ros_remappings:
     #   topics:
@@ -142,14 +141,14 @@ def get_remappings(ros_remappings):
         # topics is: ["from_1:to_1", "from_2:to_2" ... ].
         # The Node constructor requires [("from_1": "to_1"), ("from_2": "to_2") ... ].
         topics_yaml = ros_remappings['topics']
-        remappings_topics = [tuple(item.split(":")) for item in topics_yaml]
+        remappings_topics = [tuple(item.split(':')) for item in topics_yaml]
         remapping_list.extend(remappings_topics)
 
     if 'services' in ros_remappings and ros_remappings['services'] is not None:
         # services is: ["from_1:to_1", "from_2:to_2" ... ].
         # The Node constructor requires a list of tuples.
         services_yaml = ros_remappings['services']
-        remappings_services = [tuple(item.split(":")) for item in services_yaml]
+        remappings_services = [tuple(item.split(':')) for item in services_yaml]
         remapping_list.extend(remappings_services)
 
     if 'actions' in ros_remappings and ros_remappings['actions'] is not None:
@@ -168,8 +167,8 @@ def get_filenames_from_filename_patterns(yaml_parameters):
     Each filename is associated to its fully qualified key.
     """
 
-    pattern1 = r"package://([^/]+)/(.+)"
-    pattern2 = r"file://(/.+)"
+    pattern1 = r'package://([^/]+)/(.+)'
+    pattern2 = r'file://(/.+)'
     param_list = []
 
     if yaml_parameters is None or not isinstance(yaml_parameters, dict):
@@ -183,7 +182,6 @@ def get_filenames_from_filename_patterns(yaml_parameters):
     # we obtain /absolute/path/to/a/file.txt
 
     for param_id, value in yaml_parameters.items():
-
         if isinstance(value, dict):
             get_filenames_from_filename_patterns(value)
             continue
@@ -209,13 +207,12 @@ def get_filenames_from_filename_patterns(yaml_parameters):
 
 
 def configure(context, *args, **kwargs):
-
     lc_config_file = LaunchConfiguration('config_file')
     config_file = lc_config_file.perform(context)
     yaml_config = load_yaml_config(config_file)
 
     if yaml_config is None:
-        raise ValueError("The yaml config is empty.")
+        raise ValueError('The yaml config is empty.')
 
     (node_config, namespace) = get_node_config_and_ns(yaml_config)
 
@@ -223,19 +220,19 @@ def configure(context, *args, **kwargs):
         raise ValueError(f"The yaml configuration in the file '{config_file}' is invalid")
 
     node_name = next(iter(node_config))
-    ros_parameters = node_config[node_name]["ros__parameters"]
+    ros_parameters = node_config[node_name]['ros__parameters']
 
     # print(namespace)
     # print(node_name)
     # print(ros_parameters)
 
     if 'ros_execution' not in ros_parameters or ros_parameters['ros_execution'] is None:
-        raise ValueError("The field ros_execution is required in the yaml configuration")
+        raise ValueError('The field ros_execution is required in the yaml configuration')
 
     ros_execution = ros_parameters['ros_execution']
 
     if 'node_executable' not in ros_execution or ros_execution['node_executable'] is None:
-        raise ValueError("The field node_executable is required in the yaml configuration")
+        raise ValueError('The field node_executable is required in the yaml configuration')
 
     output = 'screen'
 
@@ -270,22 +267,23 @@ def configure(context, *args, **kwargs):
 
     # print(ros_parameters)
 
-    node = Node(package='eut_ground_vehicle_twist_odometry',
-                executable=ros_execution['node_executable'],
-                namespace=namespace,
-                name=node_name,
-                parameters=[ros_parameters],
-                remappings=remapping_list,
-                output=output,
-                emulate_tty=emulate_tty,
-                respawn=respawn,
-                respawn_delay=respawn_delay)
+    node = Node(
+        package='eut_ground_vehicle_twist_odometry',
+        executable=ros_execution['node_executable'],
+        namespace=namespace,
+        name=node_name,
+        parameters=[ros_parameters],
+        remappings=remapping_list,
+        output=output,
+        emulate_tty=emulate_tty,
+        respawn=respawn,
+        respawn_delay=respawn_delay,
+    )
 
     return [node]
 
 
 def generate_launch_description():
-
     # If a default value es added to the function DeclareLaunchArgument, then it must be assign
     # to a left-hand-side variable.
     DeclareLaunchArgument('config_file', description='Configuration file')

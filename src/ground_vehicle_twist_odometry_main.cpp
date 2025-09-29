@@ -15,7 +15,8 @@ int main(int argc, char** argv)
 
   try
   {
-    gv_twist_odometry = std::make_shared<gvto::GroundVehicleTwistOdometry<timestamped_twist>>("ground_vehicle_twist_odometry");
+    gv_twist_odometry = std::make_shared<gvto::GroundVehicleTwistOdometry<timestamped_twist>>(
+      "ground_vehicle_twist_odometry");
 
     rclcpp::spin(gv_twist_odometry);
   }
