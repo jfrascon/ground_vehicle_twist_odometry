@@ -1,0 +1,6 @@
+/**/ground_vehicle_twist_odometry:
+  ros__parameters:
+    odometry_frame: $(var robot_prefix)odom
+    base_frame: $(var robot_prefix)base_link
+    publish_tf: True
+    expected_incoming_twist_msg_rate: 50.0 # Hz
