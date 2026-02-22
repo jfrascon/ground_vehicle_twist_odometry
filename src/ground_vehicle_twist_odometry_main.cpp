@@ -1,31 +1,37 @@
-#include <memory>
-#include <stdexcept>
+#include "ground_vehicle_twist_odometry/ground_vehicle_twist_odometry.hpp"
 
-#include "eut_ground_vehicle_twist_odometry/ground_vehicle_twist_odometry.hpp"
+#include <memory>
+#include <exception>
+
+#include <rclcpp/rclcpp.hpp>
 
 namespace gvto = ground_vehicle_twist_odometry;
 
+#if defined(USE_TIMESTAMPED_TWIST) && USE_TIMESTAMPED_TWIST
+using GVTO = gvto::GroundVehicleTwistOdometry<true>;
+#else
+using GVTO = gvto::GroundVehicleTwistOdometry<false>;
+#endif
+
 int main(int argc, char** argv)
 {
-  constexpr bool timestamped_twist{false};
-
   rclcpp::init(argc, argv);
-
-  std::shared_ptr<gvto::GroundVehicleTwistOdometry<timestamped_twist>> gv_twist_odometry;
+  std::shared_ptr<GVTO> node;
+  int ret{0};
 
   try
   {
-    gv_twist_odometry = std::make_shared<gvto::GroundVehicleTwistOdometry<timestamped_twist>>(
-      "ground_vehicle_twist_odometry");
-
-    rclcpp::spin(gv_twist_odometry);
+    node = std::make_shared<GVTO>("ground_vehicle_twist_odometry");
+    rclcpp::spin(node);
   }
-  catch(std::exception& ex)
+  catch(const std::exception& ex)
   {
-    RCLCPP_FATAL(gv_twist_odometry->get_logger(), "%s.", ex.what());
+    const auto logger = node ? node->get_logger() :
+                               rclcpp::get_logger("ground_vehicle_twist_odometry");
+    RCLCPP_FATAL(logger, "%s.", ex.what());
+    ret = 1;
   }
 
   rclcpp::shutdown();
-
-  return 0;
+  return ret;
 }
