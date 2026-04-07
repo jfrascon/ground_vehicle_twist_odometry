@@ -1,132 +1,136 @@
-# [ground_vehicle_twist_odometry]()
+# ground_vehicle_twist_odometry
 
-`ground_vehicle_twist_odometry` is a ROS 2 package that computes planar odometry (`x`, `y`, `yaw`) by integrating incoming twist commands.
+This package provides a ROS 2 node that computes planar odometry (`x`, `y`, `yaw`) by integrating
+incoming `geometry_msgs/msg/Twist` messages.
 
-The package provides two executables:
+## What this package launches
 
-- `ground_vehicle_twist_odometry_node`: subscribes to `geometry_msgs/msg/Twist`.
-- `ground_vehicle_twist_odometry_node_w_timestamp`: subscribes to `geometry_msgs/msg/TwistStamped` and uses message timestamps for integration.
+The launch file starts one `ground_vehicle_twist_odometry_node` node.
 
-## Purpose
+That node:
 
-This node is useful when a mobile base already exposes an estimate of body twist and you want a lightweight odometry source in ROS 2.
+- subscribes to `twist`
+- publishes `nav_msgs/msg/Odometry` on `odom`
+- provides a `reset_odom` service with type `std_srvs/srv/Empty`
+- publishes the TF transform `<odometry_frame> -> <base_frame>` when `publish_tf` is `true`
 
-It publishes:
+The `namespace` launch argument sets the ROS namespace used by that node. Use a different namespace
+for each robot instance in multirobot scenarios so topics, node names, and parameters do not
+collide.
 
-- `nav_msgs/msg/Odometry` on `odom`
-- optional TF transform `<odometry_frame> -> <base_frame>`
+The package also installs `config/example_ground_vehicle_twist_odometry.yaml`, which configures the
+node and uses `$(var ...)` substitutions so launch arguments can override selected parameter values.
 
-and provides a reset service:
+## Configuration model
 
-- `reset_odom` (`std_srvs/srv/Empty`)
+`params_file` is always loaded as the node parameter file.
 
-## How it works
+If you do not pass `params_file`, the default value points to the example YAML installed by this
+package. If you pass your own YAML file, that file is used instead.
 
-The node initializes integration when the first twist message is received.
+Inside the YAML file, values written as `$(var <launch_argument_name>)` are resolved from the
+current launch context. Values written as literals are used as-is.
 
-- In non-timestamped mode (`Twist`), time is taken from `node->now()`.
-- In timestamped mode (`TwistStamped`), time is taken from `msg.header.stamp`.
+The launch file also exposes these helper-based arguments:
 
-For each message, the node computes `dt`, integrates planar motion, publishes odometry, optionally publishes TF, and stores the current timestamp as the previous timestamp.
+- Topic remappings (`remappings`)
+- Logging options (`logging_options`)
+- Node options (`node_options`)
 
-If a message arrives with `dt < 0`, the node logs a warning and skips that integration step.
+Use `logging_options` to change the node log level, for example `log-level=debug`.
 
-The parameter `expected_incoming_twist_msg_rate` is used as a runtime sanity check to warn when incoming twist frequency is lower than expected.
+## How the node integrates twist
 
-## Main ROS interfaces
+The node starts integrating when the first `twist` message is received. For each message, it
+computes `dt` from the current node clock, integrates planar motion, publishes odometry, optionally
+publishes TF, and stores the current timestamp as the previous timestamp for the next integration
+step.
 
-## Subscribed topics
+If `dt` is negative, that integration step is skipped and a warning is logged.
 
-- `twist`
-  - Type in `ground_vehicle_twist_odometry_node`: `geometry_msgs/msg/Twist`
-  - Type in `ground_vehicle_twist_odometry_node_w_timestamp`: `geometry_msgs/msg/TwistStamped`
+`expected_incoming_twist_msg_rate` is a runtime sanity check. If the incoming twist frequency is
+lower than this value, the node logs a warning.
 
-## Published topics
+## Examples
 
-- `odom` (`nav_msgs/msg/Odometry`)
-
-## Services
-
-- `reset_odom` (`std_srvs/srv/Empty`)
-
-## TF
-
-- Published (if `publish_tf=True`): `<odometry_frame> -> <base_frame>`
-
-## Parameters
-
-- `odometry_frame` (string, default: `odom`)
-- `base_frame` (string, default: `base_link`)
-- `publish_tf` (bool, default: `true`)
-- `expected_incoming_twist_msg_rate` (double, default: `40.0`)
-
-Default parameter file:
-
-- `config/example_ground_vehicle_twist_odometry.yaml`
-
-## Launch file
-
-Launch file:
-
-- `launch/ground_vehicle_twist_odometry.launch.py`
-
-Key arguments:
-
-- `use_sim_time` (bool)
-- `namespace` (string)
-- `robot_name` (string)
-- `params_file` (path to YAML file)
-- `odometry_frame` (string, without robot prefix)
-- `base_frame` (string, without robot prefix)
-- `publish_tf` (bool)
-- `expected_incoming_twist_msg_rate` (double)
-- `use_timestamped_twist` (bool)
-- `topic_remappings` (string)
-- `node_options` (string)
-- `logging_options` (string)
-
-Notes:
-
-- `odometry_frame` and `base_frame` launch arguments are automatically prefixed with `robot_prefix` derived from `robot_name`.
-- Launch-level parameter values override values from `params_file`.
-
-## Usage examples
-
-Build and source:
-
-```bash
-cd <workspace_path>
-colcon build --merge-install --symlink-install
-source install/setup.bash
-```
-
-Launch with defaults (Twist input):
+### Example 1: launch with the default parameter file
 
 ```bash
 ros2 launch ground_vehicle_twist_odometry ground_vehicle_twist_odometry.launch.py
 ```
 
-Launch using `TwistStamped` input:
+This command uses the default `params_file`, which points to
+`config/example_ground_vehicle_twist_odometry.yaml`.
 
-```bash
-ros2 launch ground_vehicle_twist_odometry ground_vehicle_twist_odometry.launch.py \
-  use_timestamped_twist:=True
+That file defines the parameter tree, but each value is delegated to a launch argument through
+`$(var ...)`. If you launch this command without overriding those arguments, the
+`DeclareLaunchArgument` defaults in `ground_vehicle_twist_odometry.launch.py` provide the values. If
+you override a launch argument from the CLI or from a parent launch file, the YAML file picks up
+that value.
+
+```yaml
+/**/ground_vehicle_twist_odometry:
+  ros__parameters:
+    use_sim_time: $(var use_sim_time)
+    odometry_frame: $(var odometry_frame)
+    base_frame: $(var base_frame)
+    publish_tf: $(var publish_tf)
+    expected_incoming_twist_msg_rate: $(var expected_incoming_twist_msg_rate)
 ```
 
-Launch in a robot namespace with custom frames:
+### Example 2: launch with a custom parameter file and CLI overrides
 
 ```bash
 ros2 launch ground_vehicle_twist_odometry ground_vehicle_twist_odometry.launch.py \
-  namespace:=fleet \
-  robot_name:=robot_01 \
+  namespace:=robot_01 \
+  params_file:=/path/to/my_ground_vehicle_twist_odometry.yaml \
   odometry_frame:=odom \
-  base_frame:=base_link
+  base_frame:=base_link \
+  remappings:="twist:=cmd_vel,odom:=wheel_odometry" \
+  logging_options:="log-level=debug" \
+  node_options:="name=twist_odometry,output=screen,emulate_tty=True,respawn=True,respawn_delay=2.0"
 ```
 
-Reset odometry:
+The custom `params_file` can mix literal values and `$(var ...)` substitutions. For example, this
+file hardcodes `odometry_frame`, `base_frame`, and `publish_tf`, but it still keeps `use_sim_time`
+and `expected_incoming_twist_msg_rate` configurable through launch arguments.
+
+The top-level YAML key in this example is `/**/twist_odometry` because the command above sets the
+node name to `twist_odometry` through `node_options`. If you use a different node name, update that
+YAML key accordingly.
+
+```yaml
+/**/twist_odometry:
+  ros__parameters:
+    use_sim_time: $(var use_sim_time)
+    odometry_frame: odom
+    base_frame: base_link
+    publish_tf: true
+    expected_incoming_twist_msg_rate: $(var expected_incoming_twist_msg_rate)
+```
+
+### Example 3: launch with a mostly literal parameter file
+
+In this style, the YAML file fully defines the node parameters except `use_sim_time`, which remains
+connected to the launch argument so the same file can be used in both real and simulated runs.
+
+Launch arguments still provide `namespace`, remappings, logging options, and node options, but not
+the node parameter values listed below.
+
+```yaml
+/**/ground_vehicle_twist_odometry:
+  ros__parameters:
+    use_sim_time: $(var use_sim_time)
+    odometry_frame: robot_odom
+    base_frame: robot_base_link
+    publish_tf: true
+    expected_incoming_twist_msg_rate: 50.0
+```
+
+### Example 4: reset odometry
 
 ```bash
 ros2 service call /robot/ground_vehicle_twist_odometry/reset_odom std_srvs/srv/Empty {}
 ```
 
-Adjust the service path according to your effective namespace and node name.
+Adjust the service name to the namespace and node name used by your launch invocation.

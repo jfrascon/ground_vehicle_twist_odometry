@@ -8,7 +8,7 @@
   <maintainer email="mateus.sanches@eurecat.org">eutrob</maintainer>
   <maintainer email="pau.reverte@eurecat.org">eutrob</maintainer>
   <maintainer email="xavi.ruiz@eurecat.org">eutrob</maintainer>
-  <license>TODO: License declaration</license>
+  <license>MIT</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
 
