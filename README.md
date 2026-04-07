@@ -1,4 +1,4 @@
-# ground_vehicle_twist_odometry
+# [`ground_vehicle_twist_odometry`](https://github.com/jfrascon/ground_vehicle_twist_odometry/tree/ros2)
 
 This package provides a ROS 2 node that computes planar odometry (`x`, `y`, `yaw`) by integrating
 incoming `geometry_msgs/msg/Twist` messages.
