@@ -30,18 +30,15 @@ namespace ground_vehicle_twist_odometry
     GroundVehicleTwistOdometry(const std::string& node_name,
                                const rclcpp::NodeOptions& options = rclcpp::NodeOptions()):
       rclcpp::Node{node_name, options},
-      twist_sub_{create_subscription<twist_type>(
-        "twist",
-        10,
-        std::bind(&GroundVehicleTwistOdometry::init_cb, this, std::placeholders::_1))},
+      twist_sub_{
+        create_subscription<twist_type>("twist",
+                                        10,
+                                        std::bind(&GroundVehicleTwistOdometry::init_cb, this, std::placeholders::_1))},
       odom_pub_{create_publisher<nav_msgs::msg::Odometry>("odom", 10)},
       tf_pub_{*this},
-      reset_srv_{
-        create_service<std_srvs::srv::Empty>("reset_odom",
-                                             std::bind(&GroundVehicleTwistOdometry::reset_cb,
-                                                       this,
-                                                       std::placeholders::_1,
-                                                       std::placeholders::_2))}
+      reset_srv_{create_service<std_srvs::srv::Empty>(
+        "reset_odom",
+        std::bind(&GroundVehicleTwistOdometry::reset_cb, this, std::placeholders::_1, std::placeholders::_2))}
     {
       // Declare parameters.
       declare_parameter("odometry_frame", "odom");
@@ -86,9 +83,7 @@ namespace ground_vehicle_twist_odometry
         t_prev_ = this->now();
       }
 
-      RCLCPP_INFO(this->get_logger(),
-                  "GroundVehicleTwistOdometry initialized at t = %.9f",
-                  t_prev_.seconds());
+      RCLCPP_INFO(this->get_logger(), "GroundVehicleTwistOdometry initialized at t = %.9f", t_prev_.seconds());
 
       // Replace subscription with the regular twist callback, to receive twist messages and start
       // the integration process.
@@ -101,8 +96,7 @@ namespace ground_vehicle_twist_odometry
 
     //////////////////////////////////////////////////////////////////////////////
 
-    void reset_cb(const std::shared_ptr<std_srvs::srv::Empty::Request>,
-                  std::shared_ptr<std_srvs::srv::Empty::Response>)
+    void reset_cb(const std::shared_ptr<std_srvs::srv::Empty::Request>, std::shared_ptr<std_srvs::srv::Empty::Response>)
     {
       // Reset position and orientation.
       this->reset();
@@ -162,14 +156,10 @@ namespace ground_vehicle_twist_odometry
       // In this case no odometry step can be computed with the message we have just received.
       if(dt < 0.0)
       {
-        RCLCPP_WARN(
-          this->get_logger(),
-          "Received twist msg from the past. No odometry step is computed with this message");
-
         RCLCPP_WARN(this->get_logger(),
-                    "t_msg: %.9f, t_prev_: %.9f",
-                    t_msg.seconds(),
-                    t_prev_.seconds());
+                    "Received twist msg from the past. No odometry step is computed with this message");
+
+        RCLCPP_WARN(this->get_logger(), "t_msg: %.9f, t_prev_: %.9f", t_msg.seconds(), t_prev_.seconds());
 
         return;
       }
