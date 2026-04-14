@@ -26,8 +26,7 @@ int main(int argc, char** argv)
   }
   catch(const std::exception& ex)
   {
-    const auto logger = node ? node->get_logger() :
-                               rclcpp::get_logger("ground_vehicle_twist_odometry");
+    const auto logger = node ? node->get_logger() : rclcpp::get_logger("ground_vehicle_twist_odometry");
     RCLCPP_FATAL(logger, "%s.", ex.what());
     ret = 1;
   }
