@@ -104,6 +104,9 @@ def launch_ground_vehicle_twist_odometry_node(ctx: LaunchContext) -> list[Launch
     node_options = rlh.process_node_options(LaunchConfiguration('node_options').perform(ctx))
     node_name = str(node_options['name']) or 'ground_vehicle_twist_odometry'
 
+    if not rlh.is_valid_name(node_name):
+        raise RuntimeError(f"The name of the node must be ASCII [A-Za-z0-9_] only: '{node_name}'")
+
     return [
         Node(
             package='ground_vehicle_twist_odometry',
