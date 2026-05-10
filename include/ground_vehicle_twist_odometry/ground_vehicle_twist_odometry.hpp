@@ -30,6 +30,10 @@ namespace ground_vehicle_twist_odometry
     GroundVehicleTwistOdometry(const std::string& node_name,
                                const rclcpp::NodeOptions& options = rclcpp::NodeOptions()):
       rclcpp::Node{node_name, options},
+      logger_ctor_{this->get_logger().get_child("constructor")},
+      logger_init_cb_{this->get_logger().get_child("init_cb")},
+      logger_reset_cb_{this->get_logger().get_child("reset_cb")},
+      logger_twist_cb_{this->get_logger().get_child("twist_cb")},
       twist_sub_{
         create_subscription<twist_type>("twist",
                                         10,
@@ -258,19 +262,19 @@ namespace ground_vehicle_twist_odometry
     }
 
     private:
-    typename rclcpp::Subscription<twist_type>::SharedPtr twist_sub_;
-    rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr odom_pub_;
-    std::string odometry_frame_;
-    std::string base_frame_;
     rclcpp::Logger logger_ctor_;
     rclcpp::Logger logger_init_cb_;
     rclcpp::Logger logger_reset_cb_;
     rclcpp::Logger logger_twist_cb_;
+    typename rclcpp::Subscription<twist_type>::SharedPtr twist_sub_;
+    rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr odom_pub_;
     tf2_ros::TransformBroadcaster tf_pub_;
+    rclcpp::Service<std_srvs::srv::Empty>::SharedPtr reset_srv_;
+    std::string odometry_frame_;
+    std::string base_frame_;
     rclcpp::Time t_prev_;
     geometry_msgs::msg::Point position_;
     double yaw_;
-    rclcpp::Service<std_srvs::srv::Empty>::SharedPtr reset_srv_;
 
     static constexpr double LIN_COV{1e-6};
     static constexpr double ANG_COV{1e-4};
