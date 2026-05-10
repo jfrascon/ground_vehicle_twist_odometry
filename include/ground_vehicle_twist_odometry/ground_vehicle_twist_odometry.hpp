@@ -52,7 +52,12 @@ namespace ground_vehicle_twist_odometry
       odometry_frame_ = get_parameter("odometry_frame").as_string();
       base_frame_     = get_parameter("base_frame").as_string();
 
-      RCLCPP_INFO(this->get_logger(), "GroundVehicleTwistOdometry node initialized");
+      logger_ctor_     = this->get_logger().get_child("constructor");
+      logger_init_cb_  = this->get_logger().get_child("init_cb");
+      logger_reset_cb_ = this->get_logger().get_child("reset_cb");
+      logger_twist_cb_ = this->get_logger().get_child("twist_cb");
+
+      RCLCPP_INFO(logger_ctor_, "GroundVehicleTwistOdometry node initialized");
     }
 
     //////////////////////////////////////////////////////////////////////////////
@@ -83,7 +88,7 @@ namespace ground_vehicle_twist_odometry
         t_prev_ = this->now();
       }
 
-      RCLCPP_INFO(this->get_logger(), "GroundVehicleTwistOdometry initialized at t = %.9f", t_prev_.seconds());
+      RCLCPP_INFO(logger_init_cb_, "GroundVehicleTwistOdometry initialized at t = %.9f", t_prev_.seconds());
 
       // Replace subscription with the regular twist callback, to receive twist messages and start
       // the integration process.
@@ -98,6 +103,8 @@ namespace ground_vehicle_twist_odometry
 
     void reset_cb(const std::shared_ptr<std_srvs::srv::Empty::Request>, std::shared_ptr<std_srvs::srv::Empty::Response>)
     {
+      RCLCPP_INFO(logger_reset_cb_, "Reset odom requested");
+
       // Reset position and orientation.
       this->reset();
 
@@ -108,6 +115,8 @@ namespace ground_vehicle_twist_odometry
         "twist",
         10,
         std::bind(&GroundVehicleTwistOdometry::init_cb, this, std::placeholders::_1));
+
+      RCLCPP_INFO(logger_reset_cb_, "Odometry reset; waiting for the next twist message");
     }
 
     void reset()
@@ -142,7 +151,7 @@ namespace ground_vehicle_twist_odometry
       // * When an exact time is required use nanoseconds() instead.
       const auto dt{static_cast<double>((t_msg - t_prev_).nanoseconds()) / 1E9};  // dt in seconds.
 
-      // RCLCPP_INFO(this->get_logger(),
+      // RCLCPP_INFO(logger_twist_cb_,
       //             "[%.9f s] dt: %.9f s, v_x: %.3f m/s, v_y: %.3f m/s, w_z: %.3f "
       //             "rad/s",
       //             t_msg.seconds(),
@@ -156,10 +165,11 @@ namespace ground_vehicle_twist_odometry
       // In this case no odometry step can be computed with the message we have just received.
       if(dt < 0.0)
       {
-        RCLCPP_WARN(this->get_logger(),
-                    "Received twist msg from the past. No odometry step is computed with this message");
+        RCLCPP_WARN(logger_twist_cb_,
+                    "Received twist msg from the past. No odometry step is computed with this "
+                    "message");
 
-        RCLCPP_WARN(this->get_logger(), "t_msg: %.9f, t_prev_: %.9f", t_msg.seconds(), t_prev_.seconds());
+        RCLCPP_WARN(logger_twist_cb_, "t_msg: %.9f, t_prev_: %.9f", t_msg.seconds(), t_prev_.seconds());
 
         return;
       }
@@ -171,7 +181,7 @@ namespace ground_vehicle_twist_odometry
 
       if(rate < expected_incoming_twist_msg_rate)
       {
-        RCLCPP_WARN(this->get_logger(),
+        RCLCPP_WARN(logger_twist_cb_,
                     "Received twist msg with a rate (%.2f Hz) lower than the expected incoming "
                     "twist msg rate (%.2f Hz).",
                     rate,
@@ -190,7 +200,7 @@ namespace ground_vehicle_twist_odometry
       position_.y += delta_y;
       yaw_ += delta_th;
 
-      // RCLCPP_INFO(this->get_logger(),
+      // RCLCPP_INFO(logger_twist_cb_,
       //             "Odometry update x: %.6f m, y: %.6f m, th: %.6f rad",
       //             position_.x,
       //             position_.y,
@@ -253,6 +263,10 @@ namespace ground_vehicle_twist_odometry
     rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr odom_pub_;
     std::string odometry_frame_;
     std::string base_frame_;
+    rclcpp::Logger logger_ctor_;
+    rclcpp::Logger logger_init_cb_;
+    rclcpp::Logger logger_reset_cb_;
+    rclcpp::Logger logger_twist_cb_;
     tf2_ros::TransformBroadcaster tf_pub_;
     rclcpp::Time t_prev_;
     geometry_msgs::msg::Point position_;
