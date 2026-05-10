@@ -45,10 +45,10 @@ repos:
     hooks:
       # Run the linter and automatically fix any safe issues.
       - id: ruff
-        args: [--fix, --config, pyproject.toml]
+        args: [ --fix, --config, pyproject.toml ]
       # Run the formatter.
       - id: ruff-format
-        args: [--config, pyproject.toml]
+        args: [ --config, pyproject.toml ]
 
   # TOML hooks
   - repo: https://github.com/ComPWA/taplo-pre-commit
@@ -56,6 +56,13 @@ repos:
     hooks:
       - id: taplo-format
       - id: taplo-lint
+
+  # YAML hooks
+  - repo: https://github.com/macisamuele/language-formatters-pre-commit-hooks
+    rev: v2.16.0
+    hooks:
+      - id: pretty-format-yaml
+        args: [ --autofix, --preserve-quotes ]
 
   # CPP hooks
   - repo: https://github.com/pre-commit/mirrors-clang-format
@@ -69,12 +76,12 @@ repos:
     rev: v3.13.0-1
     hooks:
       - id: shfmt
-        args: [-w, -s, -i=4]
+        args: [ -w, -s, -i=4 ]
 
   # Conventional Commits validation (commit message hook)
   - repo: https://github.com/compilerla/conventional-pre-commit
     rev: v4.4.0
     hooks:
       - id: conventional-pre-commit
-        stages: [commit-msg]
+        stages: [ commit-msg ]
         args: []
