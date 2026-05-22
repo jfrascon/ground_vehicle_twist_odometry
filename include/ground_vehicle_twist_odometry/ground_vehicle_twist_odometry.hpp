@@ -35,6 +35,10 @@ namespace ground_vehicle_twist_odometry
                                         10,
                                         std::bind(&GroundVehicleTwistOdometry::init_cb, this, std::placeholders::_1))},
       odom_pub_{create_publisher<nav_msgs::msg::Odometry>("odom", 10)},
+      logger_ctor_{get_logger().get_child("constructor")},
+      logger_init_cb_{get_logger().get_child("init_cb")},
+      logger_reset_cb_{get_logger().get_child("reset_cb")},
+      logger_twist_cb_{get_logger().get_child("twist_cb")},
       tf_pub_{*this},
       reset_srv_{create_service<std_srvs::srv::Empty>(
         "reset_odom",
@@ -51,11 +55,6 @@ namespace ground_vehicle_twist_odometry
       // parameters during runtime.
       odometry_frame_ = get_parameter("odometry_frame").as_string();
       base_frame_     = get_parameter("base_frame").as_string();
-
-      logger_ctor_     = this->get_logger().get_child("constructor");
-      logger_init_cb_  = this->get_logger().get_child("init_cb");
-      logger_reset_cb_ = this->get_logger().get_child("reset_cb");
-      logger_twist_cb_ = this->get_logger().get_child("twist_cb");
 
       RCLCPP_INFO(logger_ctor_, "GroundVehicleTwistOdometry node initialized");
     }
