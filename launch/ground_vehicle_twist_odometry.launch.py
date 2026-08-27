@@ -46,15 +46,10 @@ def generate_launch_description():
                 default_value='',
                 description='Expected rate of incoming twist messages',
             ),
-            DeclareLaunchArgument('node_remappings', default_value='', description=rlh.REMAPPINGS_DESC),
-            DeclareLaunchArgument(
-                'node_options', default_value=rlh.default_node_options_str(), description=rlh.NODE_OPTIONS_DESC
-            ),
-            DeclareLaunchArgument(
-                'node_logging_options',
-                default_value=rlh.default_logging_options_str(),
-                description=rlh.LOGGING_OPTIONS_DESC,
-            ),
+            DeclareLaunchArgument('node_name', default_value='ground_vehicle_twist_odometry', description='Node name'),
+            DeclareLaunchArgument('node_remappings', default_value='{}', description=rlh.REMAPPINGS_DESC),
+            DeclareLaunchArgument('node_options', default_value='{}', description=rlh.NODE_OPTIONS_DESC),
+            DeclareLaunchArgument('node_logging_options', default_value='{}', description=rlh.LOGGING_OPTIONS_DESC),
             OpaqueFunction(function=launch_ground_vehicle_twist_odometry_node),
         ]
     )
@@ -100,12 +95,16 @@ def launch_ground_vehicle_twist_odometry_node(ctx: LaunchContext) -> list[Launch
 
     parameters.append({'use_sim_time': ParameterValue(LaunchConfiguration('use_sim_time'), value_type=bool)})
 
-    # node_options include 'name', 'output', 'emulate_tty', 'respawn', 'respawn_delay',
-    node_options = rlh.process_node_options(LaunchConfiguration('node_options').perform(ctx))
-    node_name = str(node_options['name']) or 'ground_vehicle_twist_odometry'
-
-    if not rlh.is_valid_name(node_name):
-        raise RuntimeError(f"The name of the node must be ASCII [A-Za-z0-9_] only: '{node_name}'")
+    node_name = LaunchConfiguration('node_name').perform(ctx)
+    node_options_by_name, remappings_by_name, ros_arguments_by_name = rlh.resolve_node_launch_configs(
+        node_names=[node_name],
+        node_options=LaunchConfiguration('node_options').perform(ctx),
+        node_logging_options=LaunchConfiguration('node_logging_options').perform(ctx),
+        node_remappings=LaunchConfiguration('node_remappings').perform(ctx),
+    )
+    node_options = node_options_by_name[node_name]
+    remappings = remappings_by_name[node_name]
+    ros_arguments = ros_arguments_by_name[node_name]
 
     return [
         Node(
@@ -114,8 +113,8 @@ def launch_ground_vehicle_twist_odometry_node(ctx: LaunchContext) -> list[Launch
             namespace=LaunchConfiguration('namespace'),
             name=node_name,
             parameters=parameters,
-            remappings=rlh.process_remappings(LaunchConfiguration('node_remappings').perform(ctx)),
-            ros_arguments=rlh.process_node_logging_options(LaunchConfiguration('node_logging_options').perform(ctx)),
+            remappings=remappings,
+            ros_arguments=ros_arguments,
             output=node_options['output'],
             emulate_tty=node_options['emulate_tty'],
             respawn=node_options['respawn'],
