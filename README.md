@@ -18,26 +18,31 @@ The `namespace` launch argument sets the ROS namespace used by that node. Use a 
 for each robot instance in multirobot scenarios so topics, node names, and parameters do not
 collide.
 
-The package also installs `config/example_ground_vehicle_twist_odometry.yaml`, which configures the
-node and uses `$(var ...)` substitutions so launch arguments can override selected parameter values.
+The package also installs `config/example_ground_vehicle_twist_odometry.yaml`, which contains the
+default functional parameters for the node. The launch file configures `use_sim_time` separately.
 
 ## Configuration model
 
-`params_file` is always loaded as the node parameter file.
+`params_file` is loaded when it resolves to a non-empty path.
 
 If you do not pass `params_file`, the default value points to the example YAML installed by this
 package. If you pass your own YAML file, that file is used instead.
 
-Inside the YAML file, values written as `$(var <launch_argument_name>)` are resolved from the
-current launch context. Values written as literals are used as-is.
+The launch file does not expose individual functional node parameters. Consequently, CLI launch
+arguments cannot override selected values from `params_file`. To change a functional parameter,
+edit or replace the parameter file.
 
-The launch file also exposes these helper-based arguments:
+`use_sim_time` is the deliberate exception. The launch environment decides whether the node uses
+the system clock or the ROS simulation clock. The launch file appends this value after loading the
+YAML file, so the `use_sim_time` launch argument takes precedence if a custom YAML file also defines
+the parameter. Parameter files should therefore omit `use_sim_time`.
 
-- Topic remappings (`remappings`)
-- Logging options (`logging_options`)
-- Node options (`node_options`)
+When `params_file_allow_substs` is `True`, expressions such as `$(var robot_name)` can use keys
+already present in the launch context. This is mainly useful when a parent launch file includes this
+launch file and provides those keys. Literal YAML values are always used as written.
 
-Use `logging_options` to change the node log level, for example `log-level=debug`.
+`node_args` accepts one JSON object with the supported `launch_ros.actions.Node` arguments.
+It can configure the node name, remappings, output, respawn behavior, and ROS arguments.
 
 ## How the node integrates twist
 
@@ -62,67 +67,54 @@ ros2 launch ground_vehicle_twist_odometry ground_vehicle_twist_odometry.launch.p
 This command uses the default `params_file`, which points to
 `config/example_ground_vehicle_twist_odometry.yaml`.
 
-That file defines the parameter tree, but each value is delegated to a launch argument through
-`$(var ...)`. If you launch this command without overriding those arguments, the
-`DeclareLaunchArgument` defaults in `ground_vehicle_twist_odometry.launch.py` provide the values. If
-you override a launch argument from the CLI or from a parent launch file, the YAML file picks up
-that value.
+That file contains the functional parameter tree and uses literal values:
 
 ```yaml
 /**/ground_vehicle_twist_odometry:
   ros__parameters:
-    use_sim_time: $(var use_sim_time)
-    odometry_frame: $(var odometry_frame)
-    base_frame: $(var base_frame)
-    publish_tf: $(var publish_tf)
-    expected_incoming_twist_msg_rate: $(var expected_incoming_twist_msg_rate)
+    odometry_frame: robot_odom
+    base_frame: robot_base_link
+    publish_tf: true
+    expected_incoming_twist_msg_rate: 40.0
 ```
 
-### Example 2: launch with a custom parameter file and CLI overrides
+### Example 2: launch with a custom parameter file
 
 ```bash
 ros2 launch ground_vehicle_twist_odometry ground_vehicle_twist_odometry.launch.py \
   namespace:=robot_01 \
   params_file:=/path/to/my_ground_vehicle_twist_odometry.yaml \
-  odometry_frame:=odom \
-  base_frame:=base_link \
-  remappings:="twist:=cmd_vel,odom:=wheel_odometry" \
-  logging_options:="log-level=debug" \
-  node_options:="name=twist_odometry,output=screen,emulate_tty=True,respawn=True,respawn_delay=2.0"
+  node_args:='{"name":"twist_odometry","output":"screen","emulate_tty":true,"respawn":true,"respawn_delay":2.0,"remappings":[["twist","cmd_vel"],["odom","wheel_odometry"]],"ros_arguments":["--log-level","debug"]}'
 ```
 
-The custom `params_file` can mix literal values and `$(var ...)` substitutions. For example, this
-file hardcodes `odometry_frame`, `base_frame`, and `publish_tf`, but it still keeps `use_sim_time`
-and `expected_incoming_twist_msg_rate` configurable through launch arguments.
+The custom `params_file` owns every functional node parameter. Use the `use_sim_time` launch
+argument to select the clock.
 
 The top-level YAML key in this example is `/**/twist_odometry` because the command above sets the
-node name to `twist_odometry` through `node_options`. If you use a different node name, update that
+node name to `twist_odometry` through `node_args`. If you use a different node name, update that
 YAML key accordingly.
 
 ```yaml
 /**/twist_odometry:
   ros__parameters:
-    use_sim_time: $(var use_sim_time)
     odometry_frame: odom
     base_frame: base_link
     publish_tf: true
-    expected_incoming_twist_msg_rate: $(var expected_incoming_twist_msg_rate)
+    expected_incoming_twist_msg_rate: 50.0
 ```
 
-### Example 3: launch with a mostly literal parameter file
+### Example 3: substitutions provided by a parent launch file
 
-In this style, the YAML file fully defines the node parameters except `use_sim_time`, which remains
-connected to the launch argument so the same file can be used in both real and simulated runs.
+The parameter file may contain substitutions when a parent launch file already owns the substituted
+context keys. For example, a parent can provide the frame names used by several child launch files.
 
-Launch arguments still provide `namespace`, remappings, logging options, and node options, but not
-the node parameter values listed below.
+The child launch still receives one parameter file for its functional configuration:
 
 ```yaml
 /**/ground_vehicle_twist_odometry:
   ros__parameters:
-    use_sim_time: $(var use_sim_time)
-    odometry_frame: robot_odom
-    base_frame: robot_base_link
+    odometry_frame: $(var robot_odometry_frame)
+    base_frame: $(var robot_base_frame)
     publish_tf: true
     expected_incoming_twist_msg_rate: 50.0
 ```

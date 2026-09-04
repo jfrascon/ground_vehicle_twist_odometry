@@ -1,22 +1,23 @@
 import os
-from pathlib import Path
-from typing import Any, List
 
-import ros2_launch_helpers as rlh
 from ament_index_python.packages import get_package_share_directory
+from launch import LaunchContext, LaunchDescription, LaunchDescriptionEntity
 from launch.actions import DeclareLaunchArgument, OpaqueFunction
 from launch.substitutions import LaunchConfiguration
+from launch.utilities.type_utils import normalize_typed_substitution, perform_typed_substitution
 from launch_ros.actions import Node
-from launch_ros.parameter_descriptions import ParameterFile, ParameterValue
+from launch_ros.descriptions import ParameterFile, ParameterValue
+import ros2_launch_helpers as rlh
 
-from launch import LaunchContext, LaunchDescription, LaunchDescriptionEntity  # noqa
 
-
-def generate_launch_description():
+def generate_launch_description() -> LaunchDescription:
+    """Declare the inputs required to launch the twist odometry node."""
     return LaunchDescription(
         [
             DeclareLaunchArgument(
-                'namespace', default_value='robot', description='namespace where the node is launched'
+                'namespace',
+                default_value='robot',
+                description='Namespace where the node is launched.',
             ),
             DeclareLaunchArgument(
                 'params_file',
@@ -28,96 +29,54 @@ def generate_launch_description():
                 description='YAML file with node parameters',
             ),
             DeclareLaunchArgument(
+                'params_file_allow_substs',
+                default_value='True',
+                choices=['True', 'true', 'False', 'false'],
+                description='Allow ROS launch substitutions in params_file.',
+            ),
+            DeclareLaunchArgument(
                 'use_sim_time',
                 default_value='False',
                 choices=['True', 'true', 'False', 'false'],
-                description='Use simulation clock if true',
-            ),
-            DeclareLaunchArgument('odometry_frame', default_value='', description='Odometry frame for the robot'),
-            DeclareLaunchArgument('base_frame', default_value='', description='Base frame name for the robot'),
-            DeclareLaunchArgument(
-                'publish_tf',
-                default_value='',
-                choices=['True', 'true', 'False', 'false', ''],
-                description='Whether to publish the transformation T:<odometry_frame> -> <base_frame>',
+                description='Use ROS simulation time when true.',
             ),
             DeclareLaunchArgument(
-                'expected_incoming_twist_msg_rate',
-                default_value='',
-                description='Expected rate of incoming twist messages',
+                'node_args',
+                default_value='{"output":"both","ros_arguments":["--log-level","info"]}',
+                description=rlh.LAUNCH_ACTION_ARGUMENTS_DESC,
             ),
-            DeclareLaunchArgument('node_name', default_value='ground_vehicle_twist_odometry', description='Node name'),
-            DeclareLaunchArgument('node_remappings', default_value='{}', description=rlh.REMAPPINGS_DESC),
-            DeclareLaunchArgument('node_options', default_value='{}', description=rlh.NODE_OPTIONS_DESC),
-            DeclareLaunchArgument('node_logging_options', default_value='{}', description=rlh.LOGGING_OPTIONS_DESC),
-            OpaqueFunction(function=launch_ground_vehicle_twist_odometry_node),
+            rlh.RequireFile(path=LaunchConfiguration('params_file')),
+            OpaqueFunction(function=launch_node),
         ]
     )
 
 
-def launch_ground_vehicle_twist_odometry_node(ctx: LaunchContext) -> list[LaunchDescriptionEntity]:
-    # If the params_file exists, load it as a ParameterFile.
-    # If any parameter is also provided to this launch file, it takes precedence over the
-    # params_file.
-    # This allows to override specific parameters in the params_file without having to create a new
-    # params file.
-    parameters: List[Any] = []
-
-    params_file = LaunchConfiguration('params_file').perform(ctx)
-    odometry_frame = LaunchConfiguration('odometry_frame').perform(ctx)
-    base_frame = LaunchConfiguration('base_frame').perform(ctx)
-    publish_tf = LaunchConfiguration('publish_tf').perform(ctx)
-    expected_incoming_twist_msg_rate = LaunchConfiguration('expected_incoming_twist_msg_rate').perform(ctx)
-
-    if params_file:
-        if not Path(params_file).is_file():
-            raise FileNotFoundError(f"Params file '{params_file}' does not exist. ")
-
-        parameters.append(ParameterFile(params_file, allow_substs=True))
-
-    if odometry_frame:
-        parameters.append({'odometry_frame': odometry_frame})
-
-    if base_frame:
-        parameters.append({'base_frame': base_frame})
-
-    if publish_tf:
-        parameters.append({'publish_tf': publish_tf.lower() == 'true'})
-
-    if expected_incoming_twist_msg_rate:
-        try:
-            parameters.append({'expected_incoming_twist_msg_rate': float(expected_incoming_twist_msg_rate)})
-        except ValueError as exc:
-            raise ValueError(
-                'Invalid value for expected_incoming_twist_msg_rate: '
-                f"'{expected_incoming_twist_msg_rate}'. Must be a float."
-            ) from exc
-
-    parameters.append({'use_sim_time': ParameterValue(LaunchConfiguration('use_sim_time'), value_type=bool)})
-
-    node_name = LaunchConfiguration('node_name').perform(ctx)
-    node_options_by_name, remappings_by_name, ros_arguments_by_name = rlh.resolve_node_launch_configs(
-        node_names=[node_name],
-        node_options=LaunchConfiguration('node_options').perform(ctx),
-        node_logging_options=LaunchConfiguration('node_logging_options').perform(ctx),
-        node_remappings=LaunchConfiguration('node_remappings').perform(ctx),
+def launch_node(ctx: LaunchContext) -> list[LaunchDescriptionEntity]:
+    params_allow_substs = perform_typed_substitution(
+        ctx,
+        normalize_typed_substitution(LaunchConfiguration('params_file_allow_substs'), bool),
+        bool,
     )
-    node_options = node_options_by_name[node_name]
-    remappings = remappings_by_name[node_name]
-    ros_arguments = ros_arguments_by_name[node_name]
 
     return [
         Node(
             package='ground_vehicle_twist_odometry',
             executable='ground_vehicle_twist_odometry_node',
             namespace=LaunchConfiguration('namespace'),
-            name=node_name,
-            parameters=parameters,
-            remappings=remappings,
-            ros_arguments=ros_arguments,
-            output=node_options['output'],
-            emulate_tty=node_options['emulate_tty'],
-            respawn=node_options['respawn'],
-            respawn_delay=node_options['respawn_delay'],
+            parameters=[
+                ParameterFile(LaunchConfiguration('params_file'), allow_substs=params_allow_substs),
+                # The launch environment owns clock selection. Place use_sim_time after the YAML
+                # file so this launch argument remains authoritative if the file also defines it.
+                {
+                    'use_sim_time': ParameterValue(
+                        LaunchConfiguration('use_sim_time'), value_type=bool
+                    )
+                },
+            ],
+            **rlh.resolve_node_arguments(
+                LaunchConfiguration('node_args').perform(ctx),
+                default_arguments={'name': 'ground_vehicle_twist_odometry'},
+                extra_rejected_arguments={'namespace'},
+            ),
         )
     ]

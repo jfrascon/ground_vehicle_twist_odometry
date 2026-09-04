@@ -1,7 +1,8 @@
 /**/ground_vehicle_twist_odometry:
   ros__parameters:
-    use_sim_time: $(var use_sim_time)
+    # ground_vehicle_twist_odometry.launch.py sets use_sim_time after loading this file.
+    # Do not configure use_sim_time in this file.
     odometry_frame: robot_odom
     base_frame: robot_base_link
-    publish_tf: True
+    publish_tf: true
     expected_incoming_twist_msg_rate: 40.0
