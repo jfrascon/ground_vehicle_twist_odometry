@@ -4,7 +4,10 @@
 # This section configures Ruff, a high-performance Python linter and formatter.
 # All settings related to how Ruff analyzes and formats your code go under this table.
 [tool.ruff]
-line-length = 120
+line-length = 100
+# Treat modules below the repository root and its "src" directory as first-party.
+# These are Ruff's default source roots, declared explicitly for clarity.
+src = [".", "src"]
 
 [tool.ruff.format]
 # Use single quotes for ordinary strings
@@ -36,8 +39,9 @@ line-ending = "lf"
 #   - B:  likely bugs / bad practices             (flake8-bugbear)
 #   - C4: redundant comprehensions simplification (flake8-comprehensions)
 #   - I:  import sorting                          (isort rules, Ruff-native)
-#   - UP: upgrade syntax to newer Python          (pyupgrade)
-select = ["E", "W", "F", "Q", "B", "C4", "I"]
+# UP is not selected. It requires an explicit minimum Python version before Ruff can safely
+# modernize Python syntax.
+select = ["B", "C4", "E", "F", "I", "Q", "W"]
 
 # Ignore PEP 8 slice-spacing clash with Black (still flagged by pycodestyle)
 extend-ignore = ["E203"]
@@ -59,10 +63,29 @@ inline-quotes = "single"
 # Possible values: "single", "double".
 docstring-quotes = "double"
 
-# Note: You could also set `multiline-quotes` to control the quote style for
-# non-docstring, multi-line strings. If unset, it typically defaults to the
-# style of `inline-quotes`. For example:
-# multiline-quotes = "single"
+# Use triple double quotes for multiline strings so the formatter and linter agree.
+multiline-quotes = "double"
+# Keep the other quote style when it avoids inserting a backslash escape.
+avoid-escape = true
 
 [tool.ruff.lint.isort]
+# Match Ruff's import ordering to the Google style enforced by ament_flake8.
+# Sort imports by module name without prioritizing import statements over from statements.
+force-sort-within-sections = true
+# Place external dependencies before first-party imports, as required by that Google style.
+section-order = [
+  "future",
+  "standard-library",
+  "third-party",
+  "first-party",
+  "local-folder",
+]
+# Sort imported names alphabetically instead of grouping names by capitalization.
+order-by-type = false
+# Repository launch directories contain launch files, not the ROS 2 launch Python package.
+known-third-party = ["launch"]
 split-on-trailing-comma = false
+# Set this when you want specific import sections to stay adjacent instead of separated by
+# blank lines.
+# Common values: "future", "standard-library", "third-party", "first-party", "local-folder".
+no-lines-before = []
