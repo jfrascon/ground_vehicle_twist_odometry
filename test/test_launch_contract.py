@@ -90,7 +90,7 @@ def test_launch_passes_parameter_file_and_clock_selection_to_the_node(
     assert len(actions) == 1
     assert len(captured['parameters']) == 2
     parameter_file = captured['parameters'][0]
-    assert parameter_file.path == str(params_file)
+    assert parameter_file.path.perform(context) == str(params_file)
     assert parameter_file.allow_substs is (allow_substs == 'True')
 
     use_sim_time_override = captured['parameters'][1]

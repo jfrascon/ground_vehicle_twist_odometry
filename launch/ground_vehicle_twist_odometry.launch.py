@@ -1,12 +1,17 @@
 import os
 
 from ament_index_python.packages import get_package_share_directory
-from launch import LaunchContext, LaunchDescription, LaunchDescriptionEntity
-from launch.actions import DeclareLaunchArgument, OpaqueFunction
+from launch import LaunchContext
+from launch import LaunchDescription
+from launch import LaunchDescriptionEntity
+from launch.actions import DeclareLaunchArgument
+from launch.actions import OpaqueFunction
 from launch.substitutions import LaunchConfiguration
-from launch.utilities.type_utils import normalize_typed_substitution, perform_typed_substitution
+from launch.utilities.type_utils import normalize_typed_substitution
+from launch.utilities.type_utils import perform_typed_substitution
 from launch_ros.actions import Node
-from launch_ros.descriptions import ParameterFile, ParameterValue
+from launch_ros.descriptions import ParameterFile
+from launch_ros.descriptions import ParameterValue
 import ros2_launch_helpers as rlh
 
 
@@ -46,12 +51,12 @@ def generate_launch_description() -> LaunchDescription:
                 description=rlh.LAUNCH_ACTION_ARGUMENTS_DESC,
             ),
             rlh.RequireFile(path=LaunchConfiguration('params_file')),
-            OpaqueFunction(function=launch_node),
+            OpaqueFunction(function=launch_ground_vehicle_twist_odometry_node),
         ]
     )
 
 
-def launch_node(ctx: LaunchContext) -> list[LaunchDescriptionEntity]:
+def launch_ground_vehicle_twist_odometry_node(ctx: LaunchContext) -> list[LaunchDescriptionEntity]:
     params_allow_substs = perform_typed_substitution(
         ctx,
         normalize_typed_substitution(LaunchConfiguration('params_file_allow_substs'), bool),
@@ -64,7 +69,9 @@ def launch_node(ctx: LaunchContext) -> list[LaunchDescriptionEntity]:
             executable='ground_vehicle_twist_odometry_node',
             namespace=LaunchConfiguration('namespace'),
             parameters=[
-                ParameterFile(LaunchConfiguration('params_file'), allow_substs=params_allow_substs),
+                ParameterFile(
+                    LaunchConfiguration('params_file'), allow_substs=params_allow_substs
+                ),
                 # The launch environment owns clock selection. Place use_sim_time after the YAML
                 # file so this launch argument remains authoritative if the file also defines it.
                 {

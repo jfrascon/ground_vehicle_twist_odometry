@@ -55,7 +55,7 @@ repos:
   # Python hooks
   # Ruff replaces both Black (formatter) and isort (import sorting).
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.16.5
+    rev: v0.16.6
     hooks:
       - id: ruff-check
         args: [--fix]
@@ -65,6 +65,13 @@ repos:
   # These hooks validate Python after Ruff applies its automatic changes.
   - repo: local
     hooks:
+      # - id: ament_mypy
+      #   name: ament_mypy
+      #   description: Statically check Python type annotations with mypy.
+      #   entry: ament_mypy
+      #   language: system
+      #   types: [python]
+
       - id: ament_flake8
         name: ament_flake8
         description: Check Python code with the ROS 2 Flake8 configuration.
@@ -116,6 +123,22 @@ repos:
   # to be installed in the development environment.
   - repo: local
     hooks:
+      - id: ament_cpplint
+        name: ament_cpplint
+        description: Check C/C++ style with ROS 2 cpplint.
+        entry: ament_cpplint
+        language: system
+        files: '\.(h\+\+|h|hh|hxx|hpp|cuh|c|cc|cpp|cu|c\+\+|cxx|tpp|txx)$'
+        args:
+          - --linelength=120
+          # Keep cpplint aligned with .clang-format:
+          # Disable whitespace/newline: .clang-format controls brace placement.
+          # Disable whitespace/forcolon: .clang-format omits the space before range-for ':'.
+          # Disable build/include_order: .clang-format preserves include order.
+          # Disable runtime/indentation_namespace: .clang-format controls namespace indentation.
+          # Disable legal/copyright: this project does not enforce copyright headers.
+          - --filters=-whitespace/newline,-whitespace/forcolon,-build/include_order,-runtime/indentation_namespace,-legal/copyright
+
       - id: ament_cppcheck
         name: ament_cppcheck
         description: Static code analysis of C/C++ files.
@@ -124,22 +147,6 @@ repos:
         files: '\.(h\+\+|h|hh|hxx|hpp|cuh|c|cc|cpp|cu|c\+\+|cxx|tpp|txx)$'
         # Test sources are compiled, checked by the other C++ hooks, and run separately.
         exclude: ^test/
-
-      - id: ament_cpplint
-        name: ament_cpplint
-        description: Static code analysis of C/C++ files.
-        entry: ament_cpplint
-        language: system
-        files: '\.(h\+\+|h|hh|hxx|hpp|cuh|c|cc|cpp|cu|c\+\+|cxx|tpp|txx)$'
-        args:
-          - --linelength=120
-          # Disable whitespace/newline because it conflicts with the configured brace layout.
-          # Disable whitespace/forcolon because .clang-format omits the space before the
-          # range colon.
-          # Disable build/include_order because .clang-format preserves the include order.
-          # Disable runtime/indentation_namespace because .clang-format controls that layout.
-          # Disable legal/copyright because the project has no copyright header policy.
-          - --filters=-whitespace/newline,-whitespace/forcolon,-build/include_order,-runtime/indentation_namespace,-legal/copyright
 
       - id: ament_lint_cmake
         name: ament_lint_cmake
@@ -162,6 +169,21 @@ repos:
       #   entry: ament_copyright
       #   language: system
       #   exclude: .*/conf\.py$
+
+  # Shell hooks
+  - repo: https://github.com/scop/pre-commit-shfmt
+    rev: v3.13.1-1
+    hooks:
+      - id: shfmt
+        args: [-w, -s, -i=4]
+
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: v0.11.0.1-1
+    hooks:
+      # ShellCheck may report many warnings in legacy scripts, but it catches real bugs.
+      # Prefer justified local suppressions over disabling the hook; for example,
+      # '# shellcheck disable=SC1091' before sourcing a file that only exists at runtime.
+      - id: shellcheck
 
   # Secrets scanning
   # Gitleaks detects tokens, passwords, PATs, API keys, and other secrets beyond private keys.

@@ -3,10 +3,7 @@
   <name>ground_vehicle_twist_odometry</name>
   <version>1.0.0</version>
   <description>Package implementing odometry</description>
-  <maintainer email="juan.rascon@eurecat.org">eutrob</maintainer>
-  <maintainer email="mateus.sanches@eurecat.org">eutrob</maintainer>
-  <maintainer email="pau.reverte@eurecat.org">eutrob</maintainer>
-  <maintainer email="xavi.ruiz@eurecat.org">eutrob</maintainer>
+  <maintainer email="jfrascon@gmail.com">Juan Francisco Rascon Crespo</maintainer>
   <license>Apache-2.0</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
@@ -16,25 +13,32 @@
   <depend>rclcpp</depend>
   <depend>std_srvs</depend>
   <depend>tf2</depend>
-  <depend>tf2_geometry_msgs</depend>
   <depend>tf2_ros</depend>
 
   <exec_depend>ament_index_python</exec_depend>
   <exec_depend>launch</exec_depend>
   <exec_depend>launch_ros</exec_depend>
-  <exec_depend>python3-yaml</exec_depend>
   <exec_depend>ros2_launch_helpers</exec_depend>
 
-  <test_depend>ament_cmake_cppcheck</test_depend>
+  <test_depend>ament_cmake_lint_cmake</test_depend>
+  <test_depend>ament_cmake_xmllint</test_depend>
+  <test_depend>ament_cmake_clang_format</test_depend>
   <test_depend>ament_cmake_cpplint</test_depend>
   <test_depend>ament_cmake_flake8</test_depend>
-  <test_depend>ament_cmake_gtest</test_depend>
-  <test_depend>ament_cmake_lint_cmake</test_depend>
   <test_depend>ament_cmake_pep257</test_depend>
+  <!--
+  <test_depend>ament_cmake_copyright</test_depend>
+  -->
+  <test_depend>ament_cmake_cppcheck</test_depend>
+  <!--
+  <test_depend>ament_cmake_clang_tidy</test_depend>
+  -->
+  <!--
+  <test_depend>ament_cmake_mypy</test_depend>
+  -->
+  <test_depend>ament_cmake_gtest</test_depend>
   <test_depend>ament_cmake_pytest</test_depend>
-  <test_depend>ament_cmake_xmllint</test_depend>
   <test_depend>ament_lint_auto</test_depend>
-  <test_depend>python3-pytest</test_depend>
 
   <export>
     <build_type>ament_cmake</build_type>
