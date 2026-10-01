@@ -6,7 +6,9 @@ from types import ModuleType
 
 from launch import LaunchContext
 from launch.actions import DeclareLaunchArgument
+from launch_ros.actions import Node
 import pytest
+import ros2_launch_helpers as rlh
 
 PACKAGE_ROOT = Path(__file__).resolve().parents[1]
 
@@ -98,3 +100,44 @@ def test_launch_passes_parameter_file_and_clock_selection_to_the_node(
     parameter_value = use_sim_time_override['use_sim_time']
     assert parameter_value.value.perform(context) == use_sim_time
     assert parameter_value.value_type is bool
+
+
+@pytest.mark.parametrize(('allow_substs', 'use_sim_time'), [('True', 'False'), ('False', 'True')])
+def test_launch_constructs_a_real_node_with_installed_helpers(
+    allow_substs: str, use_sim_time: str, tmp_path: Path
+) -> None:
+    """Resolve the selected helper APIs and construct the actual launch Node action."""
+    module = _load_launch_module()
+    params_file = tmp_path / 'params.yaml'
+    params_file.write_text('/**:\n  ros__parameters:\n    publish_tf: true\n', encoding='utf-8')
+
+    context = LaunchContext()
+    context.launch_configurations.update(
+        {
+            'namespace': 'robot',
+            'params_file': str(params_file),
+            'params_file_allow_substs': allow_substs,
+            'use_sim_time': use_sim_time,
+            'node_args': '{"name":"custom_odom","remappings":[["twist","velocity_echo"]]}',
+        }
+    )
+
+    rlh.RequireFile(path=params_file).execute(context)
+    actions = module.launch_ground_vehicle_twist_odometry_node(context)
+    assert len(actions) == 1
+    assert isinstance(actions[0], Node)
+
+    resolved_arguments = rlh.resolve_node_arguments(
+        context.launch_configurations['node_args'],
+        default_arguments={'name': 'ground_vehicle_twist_odometry'},
+        extra_rejected_arguments={'namespace'},
+    )
+    assert resolved_arguments['name'] == 'custom_odom'
+    assert resolved_arguments['remappings'] == [('twist', 'velocity_echo')]
+
+    with pytest.raises(ValueError, match='namespace'):
+        rlh.resolve_node_arguments('{"namespace":"other"}', extra_rejected_arguments={'namespace'})
+
+    params_file.unlink()
+    with pytest.raises(FileNotFoundError):
+        rlh.RequireFile(path=params_file).execute(context)
