@@ -25,6 +25,12 @@ def generate_launch_description() -> LaunchDescription:
                 description='Namespace where the node is launched.',
             ),
             DeclareLaunchArgument(
+                'use_stamped_twist',
+                default_value='False',
+                choices=['True', 'true', 'False', 'false'],
+                description='Receive TwistStamped when true, or Twist when false.',
+            ),
+            DeclareLaunchArgument(
                 'params_file',
                 default_value=os.path.join(
                     get_package_share_directory('ground_vehicle_twist_odometry'),
@@ -57,6 +63,10 @@ def generate_launch_description() -> LaunchDescription:
 
 
 def launch_ground_vehicle_twist_odometry_node(ctx: LaunchContext) -> list[LaunchDescriptionEntity]:
+    """Select the input executable and apply the shared ROS launch configuration."""
+    use_stamped_twist = perform_typed_substitution(
+        ctx, normalize_typed_substitution(LaunchConfiguration('use_stamped_twist'), bool), bool
+    )
     params_allow_substs = perform_typed_substitution(
         ctx,
         normalize_typed_substitution(LaunchConfiguration('params_file_allow_substs'), bool),
@@ -66,7 +76,11 @@ def launch_ground_vehicle_twist_odometry_node(ctx: LaunchContext) -> list[Launch
     return [
         Node(
             package='ground_vehicle_twist_odometry',
-            executable='ground_vehicle_twist_odometry_node',
+            executable=(
+                'ground_vehicle_twist_odometry_node_w_timestamp'
+                if use_stamped_twist
+                else 'ground_vehicle_twist_odometry_node'
+            ),
             namespace=LaunchConfiguration('namespace'),
             parameters=[
                 ParameterFile(

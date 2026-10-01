@@ -25,7 +25,7 @@ def _load_launch_module() -> ModuleType:
 
 
 def test_launch_exposes_file_configuration_and_clock_selection() -> None:
-    """Expose the parameter file and use_sim_time without individual functional overrides."""
+    """Expose message selection, file configuration, and the ROS clock."""
     module = _load_launch_module()
     declarations = {
         action.name: action
@@ -35,6 +35,7 @@ def test_launch_exposes_file_configuration_and_clock_selection() -> None:
 
     assert set(declarations) == {
         'namespace',
+        'use_stamped_twist',
         'params_file',
         'params_file_allow_substs',
         'use_sim_time',
@@ -42,6 +43,8 @@ def test_launch_exposes_file_configuration_and_clock_selection() -> None:
     }
 
     context = LaunchContext()
+    declarations['use_stamped_twist'].visit(context)
+    assert context.launch_configurations['use_stamped_twist'] == 'False'
     declarations['node_args'].visit(context)
     assert context.launch_configurations['node_args'] == (
         '{"output":"both","ros_arguments":["--log-level","info"]}'
@@ -49,8 +52,13 @@ def test_launch_exposes_file_configuration_and_clock_selection() -> None:
 
 
 @pytest.mark.parametrize(('allow_substs', 'use_sim_time'), [('True', 'False'), ('False', 'True')])
+@pytest.mark.parametrize('use_stamped_twist', ['True', 'true', 'False', 'false'])
 def test_launch_passes_parameter_file_and_clock_selection_to_the_node(
-    allow_substs: str, use_sim_time: str, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    allow_substs: str,
+    use_sim_time: str,
+    use_stamped_twist: str,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
 ) -> None:
     """Keep use_sim_time as the only node parameter set outside the YAML file."""
     module = _load_launch_module()
@@ -80,6 +88,7 @@ def test_launch_passes_parameter_file_and_clock_selection_to_the_node(
     context.launch_configurations.update(
         {
             'namespace': 'robot',
+            'use_stamped_twist': use_stamped_twist,
             'params_file': str(params_file),
             'params_file_allow_substs': allow_substs,
             'use_sim_time': use_sim_time,
@@ -90,6 +99,11 @@ def test_launch_passes_parameter_file_and_clock_selection_to_the_node(
     actions = module.launch_ground_vehicle_twist_odometry_node(context)
 
     assert len(actions) == 1
+    assert captured['executable'] == (
+        'ground_vehicle_twist_odometry_node_w_timestamp'
+        if use_stamped_twist.lower() == 'true'
+        else 'ground_vehicle_twist_odometry_node'
+    )
     assert len(captured['parameters']) == 2
     parameter_file = captured['parameters'][0]
     assert parameter_file.path.perform(context) == str(params_file)
@@ -103,8 +117,9 @@ def test_launch_passes_parameter_file_and_clock_selection_to_the_node(
 
 
 @pytest.mark.parametrize(('allow_substs', 'use_sim_time'), [('True', 'False'), ('False', 'True')])
+@pytest.mark.parametrize('use_stamped_twist', ['True', 'False'])
 def test_launch_constructs_a_real_node_with_installed_helpers(
-    allow_substs: str, use_sim_time: str, tmp_path: Path
+    allow_substs: str, use_sim_time: str, use_stamped_twist: str, tmp_path: Path
 ) -> None:
     """Resolve the selected helper APIs and construct the actual launch Node action."""
     module = _load_launch_module()
@@ -115,6 +130,7 @@ def test_launch_constructs_a_real_node_with_installed_helpers(
     context.launch_configurations.update(
         {
             'namespace': 'robot',
+            'use_stamped_twist': use_stamped_twist,
             'params_file': str(params_file),
             'params_file_allow_substs': allow_substs,
             'use_sim_time': use_sim_time,
