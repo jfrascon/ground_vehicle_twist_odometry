@@ -1,11 +1,14 @@
 # ground_vehicle_twist_odometry
 
-This package provides a ROS 2 node that computes planar odometry (`x`, `y`, `yaw`) by integrating
-incoming `geometry_msgs/msg/Twist` messages.
+This package computes planar odometry (`x`, `y`, `yaw`) from samples of the base velocity.
+It provides a C++ library that runs without initializing ROS and two ROS 2 executables that
+accept `geometry_msgs/msg/Twist` or `geometry_msgs/msg/TwistStamped`.
 
 ## What this package launches
 
-The launch file starts one `ground_vehicle_twist_odometry_node` node.
+The launch file starts `ground_vehicle_twist_odometry_node`, which accepts `Twist`.
+The `ground_vehicle_twist_odometry_node_w_timestamp` executable accepts `TwistStamped`.
+Both use the same odometry library.
 
 That node:
 
@@ -46,15 +49,56 @@ It can configure the node name, remappings, output, respawn behavior, and ROS ar
 
 ## How the node integrates twist
 
-The node starts integrating when the first `twist` message is received. For each message, it
-computes `dt` from the current node clock, integrates planar motion, publishes odometry, optionally
-publishes TF, and stores the current timestamp as the previous timestamp for the next integration
-step.
+The input velocities must describe the origin of `base_frame`, expressed in that frame:
+`linear.x` and `linear.y` in m/s, and `angular.z` in rad/s. This contract applies regardless
+of whether the robot uses differential, steering, or omnidirectional drive.
 
-If `dt` is negative, that integration step is skipped and a warning is logged.
+The first valid sample establishes the starting time and zero pose. When the next sample arrives,
+the library averages the two planar twists and integrates that average over the complete time
+interval. The calculation accounts for the robot turning while it moves, including lateral
+velocity. It is exact for a constant body twist and approximates motion between changing samples.
+The published pose belongs to the new sample time; `odom.twist` contains the *new instantaneous*
+twist, not the average used to integrate the pose.
 
-`expected_incoming_twist_msg_rate` is a runtime sanity check. If the incoming twist frequency is
-lower than this value, the node logs a warning.
+`Twist` has no timestamp, so its executable assigns the node's reception time to each sample.
+`TwistStamped` uses `header.stamp`; the publisher must set it to the measurement time and use
+a clock consistent across samples. The wrapper does not transform velocities from another frame.
+
+Repeated timestamps replace the retained velocity without integrating. Older timestamps and
+non-finite velocities are rejected without changing the pose or retained sample. Every positive
+time interval is integrated in full, including an unusually long one. The
+`expected_incoming_twist_msg_rate` parameter only triggers a warning when the measured rate
+falls below its configured value; it never changes the integration. Set it to the minimum rate
+accepted by your producer. `reset_odom` clears the pose and retained sample, so the next valid
+sample establishes a new origin.
+
+The published pose and twist covariance diagonals retain fixed values from the earlier node.
+These values are **not calibrated uncertainty estimates**; the input `Twist` does not supply
+the measurement uncertainty needed to calculate them.
+
+## Use the C++ odometry library
+
+The installed `ground_vehicle_twist_odometry::twist_odometry` target exposes
+`GroundVehicleTwistOdometry` without requiring a ROS node:
+
+```cmake
+find_package(ground_vehicle_twist_odometry REQUIRED)
+target_link_libraries(my_node ground_vehicle_twist_odometry::twist_odometry)
+```
+
+```cpp
+#include <ground_vehicle_twist_odometry/ground_vehicle_twist_odometry.hpp>
+
+ground_vehicle_twist_odometry::GroundVehicleTwistOdometry odometry;
+odometry.update({{0.0, 0.0, 0.0}, 0});
+const auto result = odometry.update({{1.0, 0.0, 0.0}, 1'000'000'000});
+// The integrated position is x = 0.5 m because the samples are averaged.
+const auto pose = odometry.pose();
+```
+
+The timestamp is an integer count of nanoseconds from a consistent clock. `update` reports
+whether it initialized, integrated, replaced a same-time sample, or rejected an input.
+Calls to `update`, `reset`, and state getters must be serialized by the consumer.
 
 ## Examples
 
@@ -84,7 +128,7 @@ That file contains the functional parameter tree and uses literal values:
 ros2 launch ground_vehicle_twist_odometry ground_vehicle_twist_odometry.launch.py \
   namespace:=robot_01 \
   params_file:=/path/to/my_ground_vehicle_twist_odometry.yaml \
-  node_args:='{"name":"twist_odometry","output":"screen","emulate_tty":true,"respawn":true,"respawn_delay":2.0,"remappings":[["twist","cmd_vel"],["odom","wheel_odometry"]],"ros_arguments":["--log-level","debug"]}'
+  node_args:='{"name":"twist_odometry","output":"screen","emulate_tty":true,"respawn":true,"respawn_delay":2.0,"remappings":[["twist","velocity_echo"],["odom","base_odometry"]],"ros_arguments":["--log-level","debug"]}'
 ```
 
 The custom `params_file` owns every functional node parameter. Use the `use_sim_time` launch
@@ -119,10 +163,21 @@ The child launch still receives one parameter file for its functional configurat
     expected_incoming_twist_msg_rate: 50.0
 ```
 
-### Example 4: reset odometry
+### Example 4: use timestamped velocity samples
 
 ```bash
-ros2 service call /robot/ground_vehicle_twist_odometry/reset_odom std_srvs/srv/Empty {}
+ros2 run ground_vehicle_twist_odometry ground_vehicle_twist_odometry_node_w_timestamp \
+  --ros-args -r __ns:=/robot -r twist:=velocity_echo \
+  --params-file /path/to/my_ground_vehicle_twist_odometry.yaml
 ```
 
-Adjust the service name to the namespace and node name used by your launch invocation.
+The YAML must match the node name `ground_vehicle_twist_odometry`. The producer must publish
+`TwistStamped` and provide a measurement timestamp in `header.stamp`.
+
+### Example 5: reset odometry
+
+```bash
+ros2 service call /robot/reset_odom std_srvs/srv/Empty {}
+```
+
+Adjust the service name if you change the namespace or remap `reset_odom`.
