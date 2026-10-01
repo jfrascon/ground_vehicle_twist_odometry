@@ -22,8 +22,29 @@ foreach(dep IN LISTS dependencies)
   find_package(${dep} REQUIRED)
 endforeach()
 
-# Generate both executables without duplicating configuration, one with
-# timestamped Twist input and one without timestamp
+add_library(ground_vehicle_twist_odometry_core STATIC src/ground_vehicle_twist_odometry.cpp)
+set_target_properties(
+  ground_vehicle_twist_odometry_core
+  PROPERTIES EXPORT_NAME twist_odometry POSITION_INDEPENDENT_CODE ON)
+target_compile_features(ground_vehicle_twist_odometry_core PUBLIC cxx_std_17)
+target_include_directories(
+  ground_vehicle_twist_odometry_core
+  PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>)
+target_compile_options(
+  ground_vehicle_twist_odometry_core PRIVATE -Wall -Wconversion -Wextra -Wpedantic)
+
+add_library(ground_vehicle_twist_odometry_ros STATIC src/ground_vehicle_twist_odometry_ros.cpp)
+target_compile_features(ground_vehicle_twist_odometry_ros PUBLIC cxx_std_17)
+target_include_directories(
+  ground_vehicle_twist_odometry_ros PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_compile_options(
+  ground_vehicle_twist_odometry_ros PRIVATE -Wall -Wconversion -Wextra -Wpedantic)
+target_link_libraries(
+  ground_vehicle_twist_odometry_ros ground_vehicle_twist_odometry_core)
+ament_target_dependencies(ground_vehicle_twist_odometry_ros ${dependencies})
+
+# Generate both executables without duplicating the ROS wrapper.
 set(gvto_targets)
 
 foreach(use_timestamped_twist IN ITEMS 0 1)
@@ -41,6 +62,7 @@ foreach(use_timestamped_twist IN ITEMS 0 1)
   target_include_directories(${target} PRIVATE include)
   target_compile_options(
     ${target} PRIVATE -Wall -Wconversion -Wextra -Wpedantic)
+  target_link_libraries(${target} ground_vehicle_twist_odometry_ros)
   ament_target_dependencies(${target} ${dependencies})
 
   list(APPEND gvto_targets ${target})
@@ -48,11 +70,21 @@ endforeach()
 
 install(TARGETS ${gvto_targets} DESTINATION lib/${PROJECT_NAME})
 
+install(
+  TARGETS ground_vehicle_twist_odometry_core
+  EXPORT export_twist_odometry
+  ARCHIVE DESTINATION lib)
+install(
+  FILES include/ground_vehicle_twist_odometry/ground_vehicle_twist_odometry.hpp
+  DESTINATION include/ground_vehicle_twist_odometry)
+ament_export_targets(export_twist_odometry HAS_LIBRARY_TARGET)
+
 install(DIRECTORY config launch DESTINATION share/${PROJECT_NAME}/)
 install(FILES README.md DESTINATION share/${PROJECT_NAME})
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
+  find_package(tf2_msgs REQUIRED)
 
   # Exclude linters that require package-specific configuration.
   list(APPEND AMENT_LINT_AUTO_EXCLUDE
@@ -97,14 +129,23 @@ if(BUILD_TESTING)
 
   ament_add_gtest(test_ground_vehicle_twist_odometry test/test_ground_vehicle_twist_odometry.cpp)
   target_include_directories(test_ground_vehicle_twist_odometry PRIVATE include)
+  target_link_libraries(
+    test_ground_vehicle_twist_odometry ground_vehicle_twist_odometry_core)
+
+  ament_add_gtest(
+    test_ground_vehicle_twist_odometry_ros test/test_ground_vehicle_twist_odometry_ros.cpp)
+  target_include_directories(test_ground_vehicle_twist_odometry_ros PRIVATE include)
+  target_link_libraries(
+    test_ground_vehicle_twist_odometry_ros ground_vehicle_twist_odometry_ros)
   ament_target_dependencies(
-    test_ground_vehicle_twist_odometry
+    test_ground_vehicle_twist_odometry_ros
     geometry_msgs
     nav_msgs
     rclcpp
     std_srvs
     tf2
-    tf2_ros)
+    tf2_ros
+    tf2_msgs)
 
   ament_add_pytest_test(test_launch_contract test/test_launch_contract.py)
 endif()
