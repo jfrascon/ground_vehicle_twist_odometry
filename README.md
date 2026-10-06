@@ -1,15 +1,10 @@
 # ground_vehicle_twist_odometry
 
-This package estimates a ground vehicle's planar pose (`x`, `y`, `yaw`) by integrating base velocity samples. The pose describes motion relative to the current odometry origin.
-ROS 2 executables receive `Twist` or `TwistStamped` messages and publish the estimate.
-A C++ library performs the integration independently of ROS 2.
+This package estimates a ground vehicle's planar pose (`x`, `y`, `yaw`) by integrating base velocity samples. The pose describes motion relative to the current odometry origin. ROS 2 executables receive `Twist` or `TwistStamped` messages and publish the estimate. A C++ library performs the integration independently of ROS 2.
 
 ## What this package launches
 
-The launch file selects the input message type through `use_stamped_twist`, which defaults to `False`.
-With `use_stamped_twist:=False`, it starts `ground_vehicle_twist_odometry_node` and receives `Twist`.
-With `use_stamped_twist:=True`, it starts `ground_vehicle_twist_odometry_node_w_timestamp` and receives `TwistStamped`.
-Both variants use the same odometry library and the default ROS node name `ground_vehicle_twist_odometry`.
+The launch file selects the input message type through `use_stamped_twist`, which defaults to `False`. With `use_stamped_twist:=False`, it starts `ground_vehicle_twist_odometry_node` and receives `Twist`. With `use_stamped_twist:=True`, it starts `ground_vehicle_twist_odometry_node_w_timestamp` and receives `TwistStamped`. Both variants use the same odometry library and the default ROS node name `ground_vehicle_twist_odometry`.
 
 Both executables:
 
@@ -18,10 +13,9 @@ Both executables:
 - provide a `reset_odom` service with type `std_srvs/srv/Empty`
 - publish the TF transform `<odometry_frame> -> <base_frame>` when `publish_tf` is `true`
 
-Connect `twist` to the velocity feedback (echo) returned by the vehicle, containing the measured or estimated velocity of its base.
-Commands such as `cmd_vel` describe requested motion and can differ from the actual movement returned by the vehicle.
+Connect `twist` to the velocity feedback (echo) returned by the vehicle, containing the measured or estimated velocity of its base. Commands such as `cmd_vel` describe requested motion and can differ from the actual movement returned by the vehicle.
 
-The `namespace` launch argument sets the ROS namespace used by that node. Use a different namespace for each robot instance in multirobot scenarios so topics, node names, and parameters do not collide.
+The `namespace` launch argument defaults to `robot` for standalone use. A caller can pass a complete robot namespace, such as `/robots/robot_01`. This launch uses that namespace directly and does not append a robot name.
 
 The package also installs `config/example_ground_vehicle_twist_odometry.yaml`, which contains the default functional parameters for the node. The launch file configures `use_sim_time` separately.
 
@@ -37,11 +31,9 @@ The launch file does not expose individual functional node parameters. Consequen
 
 When `params_file_allow_substs` is `True`, expressions such as `$(var robot_name)` can use keys already present in the launch context. This is mainly useful when a parent launch file includes this launch file and provides those keys. Literal YAML values are always used as written.
 
-`node_args` accepts one JSON object with the supported `launch_ros.actions.Node` arguments.
-It can configure the node name, remappings, output, respawn behavior, and ROS arguments.
+`node_args` accepts one JSON object with the supported `launch_ros.actions.Node` arguments. It can configure the node name, remappings, output, respawn behavior, and ROS arguments.
 
-`use_stamped_twist` selects the executable in the launch file and does not belong in the node parameter YAML.
-Both input variants share `namespace`, `params_file`, `params_file_allow_substs`, `use_sim_time`, and `node_args`.
+`use_stamped_twist` selects the executable in the launch file and does not belong in the node parameter YAML. Both input variants share `namespace`, `params_file`, `params_file_allow_substs`, `use_sim_time`, and `node_args`.
 
 ## How the node integrates twist
 
@@ -58,19 +50,15 @@ flowchart LR
   output --> tf["TF (odom → base)"]
 ```
 
-The input velocities must describe the origin of `base_frame` and be expressed in that frame.
-`linear.x` and `linear.y` are in m/s, and `angular.z` is in rad/s. This contract applies regardless of whether the robot uses differential, steering, or omnidirectional drive.
+The input velocities must describe the origin of `base_frame` and be expressed in that frame. `linear.x` and `linear.y` are in m/s, and `angular.z` is in rad/s. This contract applies regardless of whether the robot uses differential, steering, or omnidirectional drive.
 
-The first valid sample establishes the starting time and zero pose. When the next sample arrives, the library averages the two planar twists and integrates that average over the complete time interval. The calculation accounts for the robot turning while it moves, including lateral velocity. It is exact for a constant body twist and approximates motion between changing samples.
-The published pose belongs to the new sample time; `odom.twist` contains the *new instantaneous* twist, not the average used to integrate the pose.
+The first valid sample establishes the starting time and zero pose. When the next sample arrives, the library averages the two planar twists and integrates that average over the complete time interval. The calculation accounts for the robot turning while it moves, including lateral velocity. It is exact for a constant body twist and approximates motion between changing samples. The published pose belongs to the new sample time; `odom.twist` contains the *new instantaneous* twist, not the average used to integrate the pose.
 
-`Twist` has no timestamp, so its executable assigns the node's reception time to each sample.
-`TwistStamped` uses `header.stamp`; the publisher must set it to the measurement time and use a clock consistent across samples. The wrapper does not transform velocities from another frame.
+`Twist` has no timestamp, so its executable assigns the node's reception time to each sample. `TwistStamped` uses `header.stamp`; the publisher must set it to the measurement time and use a clock consistent across samples. The wrapper does not transform velocities from another frame.
 
 Repeated timestamps replace the retained velocity without integrating. Older timestamps and non-finite velocities are rejected without changing the pose or retained sample. Every positive time interval is integrated in full, including an unusually long one. The `expected_incoming_twist_msg_rate` parameter only triggers a warning when the measured rate falls below its configured value; it never changes the integration. Set it to the minimum rate accepted by your producer. `reset_odom` clears the pose and retained sample, so the next valid sample establishes a new origin.
 
-The published pose and twist covariance diagonals retain fixed values from the earlier node.
-These values are **not calibrated uncertainty estimates**; the input `Twist` does not supply the measurement uncertainty needed to calculate them.
+The published pose and twist covariance diagonals retain fixed values from the earlier node. These values are **not calibrated uncertainty estimates**; the input `Twist` does not supply the measurement uncertainty needed to calculate them.
 
 ## Examples
 
@@ -93,16 +81,14 @@ That file contains the functional parameter tree and uses literal values.
     expected_incoming_twist_msg_rate: 40.0
 ```
 
-With the default namespace `robot`, the input is `/robot/twist`, the output is `/robot/odom`, and the reset service is `/robot/reset_odom`.
-In another terminal, check that the vehicle feedback arrives and that odometry is published.
+With the default namespace `robot`, the input is `/robot/twist`, the output is `/robot/odom`, and the reset service is `/robot/reset_odom`. In another terminal, check that the vehicle feedback arrives and that odometry is published.
 
 ```bash
 ros2 topic echo /robot/twist --once
 ros2 topic echo /robot/odom --once
 ```
 
-The node publishes its first odometry message after two valid samples with increasing timestamps.
-If the vehicle publishes its feedback under another topic name, connect it with a remapping as shown in the next example.
+The node publishes its first odometry message after two valid samples with increasing timestamps. If the vehicle publishes its feedback under another topic name, connect it with a remapping as shown in the next example.
 
 ### Example 2. Launch with a custom parameter file
 
@@ -115,11 +101,7 @@ ros2 launch ground_vehicle_twist_odometry ground_vehicle_twist_odometry.launch.p
 
 The custom `params_file` owns every functional node parameter. Use the `use_sim_time` launch argument to select the clock.
 
-The remapping connects the input to `/robot_01/velocity_echo`, the example name for the vehicle's velocity feedback topic.
-Replace `velocity_echo` with your vehicle's topic name; use an absolute name if the feedback is published outside the selected namespace.
-Odometry is published on `/robot_01/odom`.
-The node keeps its default name, so the top-level YAML key remains `/**/ground_vehicle_twist_odometry`.
-If you change the node name through `node_args`, update that YAML key accordingly.
+The remapping connects the input to `/robot_01/velocity_echo`, the example name for the vehicle's velocity feedback topic. Replace `velocity_echo` with your vehicle's topic name; use an absolute name if the feedback is published outside the selected namespace. Odometry is published on `/robot_01/odom`. The node keeps its default name, so the top-level YAML key remains `/**/ground_vehicle_twist_odometry`. If you change the node name through `node_args`, update that YAML key accordingly.
 
 ```yaml
 /**/ground_vehicle_twist_odometry:
@@ -155,9 +137,7 @@ ros2 launch ground_vehicle_twist_odometry ground_vehicle_twist_odometry.launch.p
   node_args:='{"remappings":[["twist","velocity_echo"]]}'
 ```
 
-This example uses the same parameter file and remapping as Example 2.
-The vehicle must publish `TwistStamped` on `/robot_01/velocity_echo` and set `header.stamp` to the measurement time.
-The node keeps the name `ground_vehicle_twist_odometry`, so the YAML key works with either input type.
+This example uses the same parameter file and remapping as Example 2. The vehicle must publish `TwistStamped` on `/robot_01/velocity_echo` and set `header.stamp` to the measurement time. The node keeps the name `ground_vehicle_twist_odometry`, so the YAML key works with either input type.
 
 ### Example 5. Reset odometry
 

@@ -43,6 +43,11 @@ def test_launch_exposes_file_configuration_and_clock_selection() -> None:
     }
 
     context = LaunchContext()
+    declarations['namespace'].visit(context)
+    assert context.launch_configurations['namespace'] == 'robot'
+    context.launch_configurations['namespace'] = '/robots/robot_01'
+    declarations['namespace'].visit(context)
+    assert context.launch_configurations['namespace'] == '/robots/robot_01'
     declarations['use_stamped_twist'].visit(context)
     assert context.launch_configurations['use_stamped_twist'] == 'False'
     declarations['node_args'].visit(context)

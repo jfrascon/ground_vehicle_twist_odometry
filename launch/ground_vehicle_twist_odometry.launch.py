@@ -20,9 +20,7 @@ def generate_launch_description() -> LaunchDescription:
     return LaunchDescription(
         [
             DeclareLaunchArgument(
-                'namespace',
-                default_value='robot',
-                description='Namespace where the node is launched.',
+                'namespace', default_value='robot', description='Full robot namespace.'
             ),
             DeclareLaunchArgument(
                 'use_stamped_twist',
